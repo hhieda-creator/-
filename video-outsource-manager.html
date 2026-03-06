@@ -227,11 +227,15 @@ tr:hover td { background: #fafbff; }
   <div class="nav-section">
     <div class="nav-label">設定</div>
     <div class="nav-item" data-page="cast" onclick="goto(this,'cast')"><span class="ni">⭐</span><span>キャストマスタ</span></div>
+    <div class="nav-item" data-page="editor" onclick="goto(this,'editor')"><span class="ni">👷</span><span>編集者・請求管理</span></div>
   </div>
   <div class="nav-section" style="border-top:1px solid rgba(255,255,255,0.08);margin-top:12px;padding-top:4px;">
     <div class="nav-label">データ管理</div>
     <div class="nav-item" onclick="exportData()" style="color:rgba(255,255,255,0.7);"><span class="ni">💾</span><span>バックアップ保存</span></div>
     <div class="nav-item" onclick="document.getElementById('import-input').click()" style="color:rgba(255,255,255,0.7);"><span class="ni">📂</span><span>バックアップ復元</span></div>
+    <div class="nav-item" onclick="exportCSV()" style="color:rgba(255,255,255,0.7);"><span class="ni">📊</span><span>CSV出力</span></div>
+    <div class="nav-item" onclick="syncAllToGAS()" style="color:rgba(255,255,255,0.7);"><span class="ni">🔄</span><span>シートに同期</span></div>
+    <div class="nav-item" onclick="setGasUrl()" style="color:rgba(255,255,255,0.7);"><span class="ni">⚙️</span><span>GAS URL設定</span></div>
     <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
   </div>
 </nav>
@@ -249,6 +253,18 @@ tr:hover td { background: #fafbff; }
       <div class="field"><label>案件元（クライアント）</label><select id="f-client" onchange="updatePreview()"><option value="">選択または新規追加</option></select></div>
       <div class="field"><label>案件名 / 動画タイトル</label><input id="f-title" type="text" placeholder="例: 2603ブルジュキャバクラリレーA" oninput="updatePreview()"></div>
       <div class="field"><label>年月</label><input id="f-ym" type="month" oninput="updatePreview()"></div>
+      <div class="field"><label>担当外注者</label>
+        <select id="f-editor" onchange="updatePreview()">
+          <option value="">未割当</option>
+        </select>
+      </div>
+      <div class="field"><label>進捗ステータス</label>
+        <select id="f-status" onchange="updatePreview()">
+          <option value="pending">⬜ 未着手</option>
+          <option value="editing">🟡 編集中</option>
+          <option value="done">✅ 完了</option>
+        </select>
+      </div>
       <div class="field"><label>動画種別</label>
         <select id="f-type" onchange="onTypeChange();updatePreview()">
           <option value="cabaret">キャバクラ / ナイト系</option>
@@ -288,9 +304,13 @@ tr:hover td { background: #fafbff; }
 
     <div id="section-cast">
       <div class="sec">出演者</div>
-      <div class="field" style="max-width:280px;margin-bottom:16px;">
+      <div class="field" style="max-width:320px;margin-bottom:16px;">
         <label>店舗・ブランド名（名前上に表示）</label>
-        <input id="f-shop" type="text" placeholder="例: 中洲ブルジュ" oninput="updatePreview()">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="f-shop" type="text" placeholder="例: 中洲ブルジュ" list="shop-list" oninput="updatePreview()" style="flex:1;background:#f9fafb;border:1.5px solid #e5e7eb;color:#111827;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;">
+          <datalist id="shop-list"></datalist>
+          <button class="btn-sm" onclick="saveShopName()" title="現在の店舗名を候補に保存">＋保存</button>
+        </div>
       </div>
       <div class="cast-list" id="cast-list"></div>
       <div class="cast-add-row">
@@ -368,7 +388,7 @@ tr:hover td { background: #fafbff; }
   </div>
   <div class="card" style="padding:0;overflow:hidden;">
     <table>
-      <thead><tr><th>年月</th><th>案件元</th><th>案件名</th><th>種別</th><th>出演者</th><th>納品フォルダ</th><th>操作</th></tr></thead>
+      <thead><tr><th>年月</th><th>案件元</th><th>案件名</th><th>種別</th><th>担当者</th><th>進捗</th><th>納品フォルダ</th><th>操作</th></tr></thead>
       <tbody id="filing-tbody"></tbody>
     </table>
   </div>
@@ -383,19 +403,6 @@ tr:hover td { background: #fafbff; }
       <div class="field"><label>案件元</label><select id="ins-client" onchange="filterInsightProjects()"><option value="">すべて</option></select></div>
       <div class="field"><label>案件名</label><select id="ins-project" onchange="loadInsightProject()"><option value="">-- 選択 --</option></select></div>
     </div>
-  </div>
-  <div class="card">
-    <div class="sec">動画ファイル</div>
-    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('video-input').click()"
-      ondragover="event.preventDefault();this.style.borderColor='var(--accent2)'"
-      ondragleave="this.style.borderColor='#d1d5db'"
-      ondrop="handleDrop(event)">
-      <div class="uz-icon">🎬</div>
-      <p>クリックまたはドラッグ＆ドロップで動画をアップロード</p>
-      <p class="uz-sub">MP4 / MOV / AVI 対応</p>
-      <input type="file" id="video-input" accept="video/*" style="display:none" onchange="handleVideoUpload(event)">
-    </div>
-    <div id="video-info" style="display:none;"></div>
   </div>
   <div class="card" id="metrics-input-card" style="display:none;">
     <div class="sec">SNS数値を記録</div>
@@ -481,6 +488,83 @@ tr:hover td { background: #fafbff; }
   </div>
 </div>
 
+<!-- 編集者・請求管理 -->
+<div class="page" id="page-editor">
+  <div class="page-header">
+    <div><h1>編集者・請求管理</h1><p>編集者ごとの発注・支払いを管理して請求書を出力</p></div>
+    <button class="btn btn-primary" onclick="showAddEditorModal()">＋ 編集者を追加</button>
+  </div>
+
+  <!-- 編集者タブ -->
+  <div class="client-tabs" id="editor-tabs"></div>
+
+  <!-- 月フィルタ＋発注追加 -->
+  <div class="filter-bar" id="editor-filter-bar" style="display:none;">
+    <select id="editor-month-filter" onchange="renderEditorOrders()" style="background:#fff;border:1.5px solid #e5e7eb;color:#111827;border-radius:8px;padding:8px 13px;font-size:13px;font-family:inherit;">
+      <option value="">すべての月</option>
+    </select>
+    <select id="editor-status-filter" onchange="renderEditorOrders()" style="background:#fff;border:1.5px solid #e5e7eb;color:#111827;border-radius:8px;padding:8px 13px;font-size:13px;font-family:inherit;">
+      <option value="">すべての状態</option>
+      <option value="unpaid">未払い</option>
+      <option value="paid">支払済み</option>
+    </select>
+    <button class="btn btn-secondary" onclick="showAddOrderModal()">＋ 発注を記録</button>
+    <button class="btn btn-purple" onclick="generateInvoice()">🧾 請求書を出力</button>
+  </div>
+
+  <!-- 統計 -->
+  <div id="editor-stats" style="display:none;"></div>
+
+  <!-- 発注一覧 -->
+  <div class="card" id="editor-orders-card" style="display:none;padding:0;overflow:hidden;">
+    <table>
+      <thead><tr><th>年月</th><th>案件名</th><th>単価</th><th>本数</th><th>金額</th><th>状態</th><th>操作</th></tr></thead>
+      <tbody id="editor-orders-tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="editor-empty" class="card" style="display:none;">
+    <div class="empty-state"><div class="big">👷</div>編集者を選択してください</div>
+  </div>
+</div>
+
+<!-- 発注追加モーダル -->
+<div id="modal-order" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px;width:480px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">発注を記録</h3>
+    <div class="form-grid full" style="gap:14px;">
+      <div class="field"><label>年月</label><input id="ord-ym" type="month"></div>
+      <div class="field"><label>案件名</label>
+        <select id="ord-project-sel" onchange="onOrderProjectSelect()"><option value="">案件から選ぶ</option></select>
+        <input id="ord-title" type="text" placeholder="または手入力" style="margin-top:6px;">
+      </div>
+      <div class="field"><label>単価（円）</label><input id="ord-price" type="number" placeholder="例: 5000"></div>
+      <div class="field"><label>本数</label><input id="ord-count" type="number" placeholder="1" value="1" min="1"></div>
+      <div class="field"><label>メモ</label><input id="ord-memo" type="text" placeholder="任意"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeOrderModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveOrder()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 編集者追加モーダル -->
+<div id="modal-editor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px;width:400px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">編集者を追加</h3>
+    <div class="form-grid full" style="gap:14px;">
+      <div class="field"><label>名前</label><input id="ed-name" type="text" placeholder="例: 田中さん"></div>
+      <div class="field"><label>デフォルト単価（円）</label><input id="ed-rate" type="number" placeholder="例: 5000"></div>
+      <div class="field"><label>連絡先・メモ</label><input id="ed-memo" type="text" placeholder="任意"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeEditorModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveEditor()">追加</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- /main -->
 </div><!-- /app -->
 <div class="toast" id="toast">✓ <span id="toast-msg"></span></div>
@@ -488,6 +572,9 @@ tr:hover td { background: #fafbff; }
 <script>
 // ── STATE ──
 let projects       = JSON.parse(localStorage.getItem('vop_projects')        || '[]');
+let editors        = JSON.parse(localStorage.getItem('vop_editors')          || '[]');
+let editorOrders   = JSON.parse(localStorage.getItem('vop_editor_orders')    || '[]');
+let shopNames      = JSON.parse(localStorage.getItem('vop_shop_names')       || '[]');
 let castMaster     = JSON.parse(localStorage.getItem('vop_casts')           || '[]');
 let clients        = JSON.parse(localStorage.getItem('vop_clients')         || '["中洲ブルジュ"]');
 let accounts       = JSON.parse(localStorage.getItem('vop_accounts')        || '{}');
@@ -577,6 +664,9 @@ window.onload = () => {
   renderCastMasterPage();
   populateInsightProjects();
   renderAccountSelect();
+  renderEditorPage();
+  renderFormEditorSelect();
+  renderShopDatalist();
 };
 
 // ── NAV ──
@@ -589,6 +679,7 @@ function goto(el, page) {
   if(page==='insights') { populateInsightProjects(); }
   if(page==='account')  { renderAccountSelect(); }
   if(page==='cast')     { renderCastMasterPage(); }
+  if(page==='editor')   { renderEditorPage(); }
 }
 
 // ── URL LISTS ──
@@ -627,6 +718,14 @@ document.addEventListener('change',e=>{
   }
 });
 
+// ── EDITOR SELECT IN FORM ──
+function renderFormEditorSelect(){
+  const sel=document.getElementById('f-editor'); if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">未割当</option>';
+  editors.forEach(e=>{const o=document.createElement('option');o.value=e.name;o.textContent=e.name;if(e.name===cur)o.selected=true;sel.appendChild(o);});
+}
+
 // ── TYPE ──
 function onTypeChange() {
   const t=document.getElementById('f-type').value;
@@ -653,7 +752,16 @@ function renderCastList() {
   }
 }
 function addCast(){if(castCount<20){castCount++;renderCastList();}}
-function removeCast(){if(castCount>1){castCount--;renderCastList();updatePreview();}}
+function removeCast(){
+  if(castCount>1){
+    // preserve current values before re-render
+    const names=[],ids=[];
+    for(let j=1;j<castCount;j++){names.push(document.getElementById('cast-name-'+j)?.value||'');ids.push(document.getElementById('cast-id-'+j)?.value||'');}
+    castCount--;renderCastList();
+    names.forEach((n,idx)=>{const ni=document.getElementById('cast-name-'+(idx+1));const di=document.getElementById('cast-id-'+(idx+1));if(ni)ni.value=n;if(di)di.value=ids[idx]||'';});
+    updatePreview();
+  }
+}
 function removeCastRow(i){
   const names=[],ids=[];
   for(let j=1;j<=castCount;j++){const n=document.getElementById(`cast-name-${j}`)?.value||'';const d=document.getElementById(`cast-id-${j}`)?.value||'';if(j!==i){names.push(n);ids.push(d);}}
@@ -747,7 +855,7 @@ function updatePreview(){
   if(introLines.length){
     line('　冒頭テロップ：');
     introLines.forEach(l=>line(`　　「${l}」`));
-    line('　　　↑ の冒頭から内容に沿って編集をお願いします');
+
     blank();
   }
   if(editNotes){line(`　${editNotes}`);blank();}
@@ -807,6 +915,7 @@ function saveProject(){
     castCount:cast.length,cast,
     refVideos:getUrlList('ref-videos-list'),styleFolders:getUrlList('style-folders-list'),
     pastFolders:getUrlList('past-folders-list'),outputFolders:getUrlList('output-folders-list'),
+    assignedEditor:document.getElementById('f-editor').value,status:document.getElementById('f-status').value||'pending',
     shop:document.getElementById('f-shop').value,editNotes:document.getElementById('f-edit-notes').value,
     special:document.getElementById('f-special').value,introText:document.getElementById('f-intro-text').value,
     font:document.getElementById('f-font').value,telopStyle:document.getElementById('f-telop-style').value,
@@ -820,6 +929,7 @@ function saveProject(){
   };
   projects.unshift(proj);
   localStorage.setItem('vop_projects',JSON.stringify(projects));
+  syncToGAS(proj);
   toast('案件を保存しました ✓');
 }
 
@@ -856,7 +966,8 @@ function renderFiling(){
     <td><span class="badge badge-purple">${p.client||'未設定'}</span></td>
     <td><strong style="font-size:13px;">${p.title}</strong></td>
     <td><span class="badge ${typeBadge[p.type]||'badge-gray'}">${typeLabels[p.type]||'—'}</span></td>
-    <td>${p.castCount||0}名</td>
+    <td>${p.assignedEditor||'<span style="color:#d1d5db;">—</span>'}</td>
+    <td><span class="badge ${{'pending':'badge-gray','editing':'badge-orange','done':'badge-green'}[p.status||'pending']}" style="cursor:pointer;" onclick="cycleStatus(${p.id})">${{'pending':'⬜ 未着手','editing':'🟡 編集中','done':'✅ 完了'}[p.status||'pending']}</span></td>
     <td>${(p.outputFolders&&p.outputFolders[0])?`<a class="tag-link" href="${p.outputFolders[0]}" target="_blank">📁 開く</a>`:'<span style="color:#d1d5db;">—</span>'}</td>
     <td class="table-actions">
       <button class="btn-sm" onclick="loadProject(${p.id})">再編集</button>
@@ -868,6 +979,9 @@ function renderFiling(){
 function loadProject(id){
   const p=projects.find(x=>x.id===id);if(!p)return;
   document.getElementById('f-title').value=p.title||''; document.getElementById('f-ym').value=p.ym||'';
+  document.getElementById('f-status').value=p.status||'pending';
+  renderFormEditorSelect();
+  document.getElementById('f-editor').value=p.assignedEditor||'';
   document.getElementById('f-type').value=p.type||'cabaret'; document.getElementById('f-client').value=p.client||'';
   document.getElementById('f-shop').value=p.shop||''; document.getElementById('f-edit-notes').value=p.editNotes||'';
   document.getElementById('f-special').value=p.special||''; document.getElementById('f-intro-text').value=p.introText||'';
@@ -888,6 +1002,69 @@ function loadProject(id){
 function copyProjectText(id){const p=projects.find(x=>x.id===id);if(!p)return;navigator.clipboard.writeText(p.preview||'').then(()=>toast('指示書をコピーしました'));}
 function deleteProject(id){if(!confirm('この案件を削除しますか？'))return;projects=projects.filter(x=>x.id!==id);localStorage.setItem('vop_projects',JSON.stringify(projects));renderFilingClientTabs();renderFiling();toast('削除しました');}
 
+// ── STATUS CYCLE ──
+function cycleStatus(id){
+  const p=projects.find(x=>x.id===id); if(!p)return;
+  const cycle={pending:'editing',editing:'done',done:'pending'};
+  p.status=cycle[p.status||'pending'];
+  localStorage.setItem('vop_projects',JSON.stringify(projects));
+  renderFiling();
+  syncToGAS(p);
+  toast({pending:'未着手に戻しました',editing:'🟡 編集中にしました',done:'✅ 完了しました'}[p.status]);
+}
+
+// ── GAS SYNC ──
+let GAS_URL = localStorage.getItem('vop_gas_url') || '';
+
+function syncToGAS(proj){
+  if(!GAS_URL) return;
+  const row = {
+    id: proj.id,
+    ym: proj.ym||'',
+    client: proj.client||'',
+    title: proj.title||'',
+    type: typeLabels[proj.type]||proj.type||'',
+    assignedEditor: proj.assignedEditor||'',
+    status: {pending:'未着手',editing:'編集中',done:'完了'}[proj.status||'pending'],
+    outputFolder: (proj.outputFolders&&proj.outputFolders[0])||'',
+    updatedAt: new Date().toISOString()
+  };
+  fetch(GAS_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(row)})
+    .catch(()=>{});
+}
+
+function syncAllToGAS(){
+  if(!GAS_URL){ alert('GAS URLが設定されていません。\n設定ページでURLを入力してください。'); return; }
+  projects.forEach(p=>syncToGAS(p));
+  toast('スプレッドシートに同期しました ✓');
+}
+
+function setGasUrl(){
+  const url=prompt('Google Apps Script のウェブアプリURLを入力してください:', GAS_URL);
+  if(url===null)return;
+  GAS_URL=url.trim();
+  localStorage.setItem('vop_gas_url',GAS_URL);
+  toast(GAS_URL?'GAS URLを保存しました ✓':'URLをクリアしました');
+}
+
+function exportCSV(){
+  const headers=['ID','年月','案件元','案件名','種別','担当外注者','進捗','納品フォルダ'];
+  const rows=projects.map(p=>[
+    p.id, p.ym||'', p.client||'', `"${(p.title||'').replace(/"/g,'""')}"`,
+    typeLabels[p.type]||p.type||'',
+    p.assignedEditor||'',
+    {pending:'未着手',editing:'編集中',done:'完了'}[p.status||'pending'],
+    (p.outputFolders&&p.outputFolders[0])||''
+  ].join(','));
+  const csv='﻿'+[headers.join(','),...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`video-ops-案件一覧-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('CSVをダウンロードしました ✓');
+}
+
 // ── INSIGHTS ──
 function populateInsightProjects(){
   const cs=document.getElementById('ins-client'); cs.innerHTML='<option value="">すべて</option>';
@@ -904,7 +1081,16 @@ function loadInsightProject(){
   currentInsightProjectId=id||null;
   document.getElementById('insights-output').innerHTML='';
   document.getElementById('insight-history-wrap').innerHTML='';
-  if(id)renderInsightHistory(id);
+  const card=document.getElementById('metrics-input-card');
+  if(id){
+    card.style.display='';
+    const labels={'48h':'投稿後 48時間の数値','1week':'投稿後 1週間の数値','1month':'投稿後 1ヶ月の数値'};
+    document.getElementById('period-label').textContent=labels[currentPeriod]||'';
+    switchPeriod(document.querySelector('.ttab.active')||document.querySelector('.ttab'),currentPeriod);
+    renderInsightHistory(id);
+  } else {
+    card.style.display='none';
+  }
 }
 function switchPeriod(el,period){
   currentPeriod=period;
@@ -1160,6 +1346,9 @@ function exportData() {
     clients:        JSON.parse(localStorage.getItem('vop_clients')         || '[]'),
     accounts:       JSON.parse(localStorage.getItem('vop_accounts')        || '{}'),
     insightRecords: JSON.parse(localStorage.getItem('vop_insight_records') || '{}'),
+    editors:        JSON.parse(localStorage.getItem('vop_editors')         || '[]'),
+    editorOrders:   JSON.parse(localStorage.getItem('vop_editor_orders')   || '[]'),
+    shopNames:      JSON.parse(localStorage.getItem('vop_shop_names')      || '[]'),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   const url  = URL.createObjectURL(blob);
@@ -1186,6 +1375,9 @@ function importData(e) {
       if(data.clients)        { localStorage.setItem('vop_clients',         JSON.stringify(data.clients));         clients        = data.clients; }
       if(data.accounts)       { localStorage.setItem('vop_accounts',        JSON.stringify(data.accounts));       accounts       = data.accounts; }
       if(data.insightRecords) { localStorage.setItem('vop_insight_records', JSON.stringify(data.insightRecords)); insightRecords = data.insightRecords; }
+      if(data.editors)       { localStorage.setItem('vop_editors',         JSON.stringify(data.editors));       editors       = data.editors; }
+      if(data.editorOrders)  { localStorage.setItem('vop_editor_orders',   JSON.stringify(data.editorOrders));  editorOrders  = data.editorOrders; }
+      if(data.shopNames)     { localStorage.setItem('vop_shop_names',      JSON.stringify(data.shopNames));     shopNames     = data.shopNames; }
       renderClientSelect(); renderFilingClientTabs(); renderFiling(); renderCastMasterPage(); populateInsightProjects(); renderAccountSelect();
       toast('バックアップを復元しました ✓');
     } catch(err) {
@@ -1194,6 +1386,167 @@ function importData(e) {
     e.target.value = '';
   };
   reader.readAsText(file);
+}
+
+// ── SHOP NAMES ──
+function renderShopDatalist(){
+  const dl=document.getElementById('shop-list'); if(!dl)return;
+  dl.innerHTML=shopNames.map(s=>`<option value="${s.replace(/"/g,'&quot;')}">`).join('');
+}
+function saveShopName(){
+  const v=document.getElementById('f-shop').value.trim(); if(!v)return;
+  if(!shopNames.includes(v)){shopNames.push(v);localStorage.setItem('vop_shop_names',JSON.stringify(shopNames));renderShopDatalist();toast('店舗名を候補に追加しました');}
+  else toast('すでに登録されています');
+}
+
+// ── EDITOR MANAGEMENT ──
+let currentEditorId = null;
+
+function renderEditorPage(){
+  const tabs=document.getElementById('editor-tabs'); if(!tabs)return;
+  if(!editors.length){
+    tabs.innerHTML='';
+    document.getElementById('editor-filter-bar').style.display='none';
+    document.getElementById('editor-stats').style.display='none';
+    document.getElementById('editor-orders-card').style.display='none';
+    document.getElementById('editor-empty').style.display='';
+    return;
+  }
+  tabs.innerHTML=editors.map(e=>`<div class="client-tab${e.id===currentEditorId?' active':''}" onclick="selectEditor(${e.id})">${e.name}</div>`).join('');
+  if(currentEditorId) renderEditorOrders();
+  else { document.getElementById('editor-filter-bar').style.display='none'; document.getElementById('editor-stats').style.display='none'; document.getElementById('editor-orders-card').style.display='none'; document.getElementById('editor-empty').style.display=''; }
+}
+
+function selectEditor(id){
+  currentEditorId=id;
+  renderEditorPage();
+  document.getElementById('editor-filter-bar').style.display='';
+  document.getElementById('editor-empty').style.display='none';
+  renderEditorMonthFilter();
+  renderEditorOrders();
+}
+
+function renderEditorMonthFilter(){
+  const sel=document.getElementById('editor-month-filter'); if(!sel)return;
+  const months=[...new Set(editorOrders.filter(o=>o.editorId===currentEditorId).map(o=>o.ym).filter(Boolean))].sort().reverse();
+  const cur=sel.value;
+  sel.innerHTML='<option value="">すべての月</option>';
+  months.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;if(m===cur)o.selected=true;sel.appendChild(o);});
+}
+
+function renderEditorOrders(){
+  const ym=document.getElementById('editor-month-filter')?.value||'';
+  const status=document.getElementById('editor-status-filter')?.value||'';
+  const orders=editorOrders.filter(o=>o.editorId===currentEditorId&&(!ym||o.ym===ym)&&(!status||o.status===status));
+  const card=document.getElementById('editor-orders-card'); const tbody=document.getElementById('editor-orders-tbody');
+  const statsEl=document.getElementById('editor-stats');
+
+  const totalAmt=orders.reduce((s,o)=>s+(o.price*o.count),0);
+  const unpaidAmt=orders.filter(o=>o.status!=='paid').reduce((s,o)=>s+(o.price*o.count),0);
+  const paidAmt=orders.filter(o=>o.status==='paid').reduce((s,o)=>s+(o.price*o.count),0);
+  statsEl.style.display='';
+  statsEl.innerHTML=`<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card"><div class="slabel">合計金額</div><div class="sval purple">¥${fmt(totalAmt)}</div></div>
+    <div class="stat-card"><div class="slabel">未払い</div><div class="sval pink">¥${fmt(unpaidAmt)}</div></div>
+    <div class="stat-card"><div class="slabel">支払済み</div><div class="sval green">¥${fmt(paidAmt)}</div></div>
+  </div>`;
+
+  if(!orders.length){card.style.display='none';tbody.innerHTML='';return;}
+  card.style.display='';
+  tbody.innerHTML=orders.map(o=>`<tr>
+    <td style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${o.ym||'—'}</td>
+    <td><strong>${o.title||'—'}</strong>${o.memo?`<br><span style="font-size:11px;color:#9ca3af;">${o.memo}</span>`:''}</td>
+    <td>¥${fmt(o.price||0)}</td>
+    <td>${o.count||1}本</td>
+    <td><strong>¥${fmt((o.price||0)*(o.count||1))}</strong></td>
+    <td><span class="badge ${o.status==='paid'?'badge-green':'badge-orange'}" style="cursor:pointer;" onclick="toggleOrderPaid(${o.id})">${o.status==='paid'?'支払済み':'未払い'}</span></td>
+    <td class="table-actions">
+      <button class="btn-sm danger" onclick="deleteOrder(${o.id})">削除</button>
+    </td></tr>`).join('');
+}
+
+function toggleOrderPaid(id){
+  const o=editorOrders.find(x=>x.id===id); if(!o)return;
+  o.status=o.status==='paid'?'unpaid':'paid';
+  localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
+  renderEditorOrders(); toast(o.status==='paid'?'支払済みにしました':'未払いに戻しました');
+}
+function deleteOrder(id){
+  if(!confirm('この発注記録を削除しますか？'))return;
+  editorOrders=editorOrders.filter(x=>x.id!==id);
+  localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
+  renderEditorOrders(); toast('削除しました');
+}
+
+function showAddEditorModal(){ document.getElementById('modal-editor').style.display='flex'; setTimeout(()=>document.getElementById('ed-name').focus(),50); }
+function closeEditorModal(){ document.getElementById('modal-editor').style.display='none'; ['ed-name','ed-rate','ed-memo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); }
+function saveEditor(){
+  const name=document.getElementById('ed-name').value.trim(); if(!name){alert('名前を入力してください');return;}
+  const rate=+document.getElementById('ed-rate').value||0;
+  const memo=document.getElementById('ed-memo').value.trim();
+  const ed={id:Date.now(),name,rate,memo};
+  editors.push(ed); localStorage.setItem('vop_editors',JSON.stringify(editors));
+  closeEditorModal(); currentEditorId=ed.id; renderEditorPage(); renderFormEditorSelect(); selectEditor(ed.id);
+  toast(`「${name}」を追加しました`);
+}
+
+function showAddOrderModal(){
+  if(!currentEditorId){alert('編集者を選択してください');return;}
+  const ed=editors.find(e=>e.id===currentEditorId);
+  document.getElementById('ord-price').value=ed?.rate||'';
+  document.getElementById('ord-ym').value=new Date().toISOString().slice(0,7);
+  document.getElementById('ord-count').value=1;
+  // populate project select
+  const sel=document.getElementById('ord-project-sel');
+  sel.innerHTML='<option value="">案件から選ぶ</option>';
+  projects.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.ym||''} / ${p.title}`;sel.appendChild(o);});
+  document.getElementById('modal-order').style.display='flex';
+}
+function onOrderProjectSelect(){
+  const id=+document.getElementById('ord-project-sel').value; if(!id)return;
+  const p=projects.find(x=>x.id===id); if(!p)return;
+  document.getElementById('ord-title').value=p.title||'';
+  document.getElementById('ord-ym').value=p.ym||'';
+}
+function closeOrderModal(){ document.getElementById('modal-order').style.display='none'; }
+function saveOrder(){
+  const ym=document.getElementById('ord-ym').value;
+  const title=document.getElementById('ord-title').value.trim()||document.getElementById('ord-project-sel').options[document.getElementById('ord-project-sel').selectedIndex]?.text||'';
+  const price=+document.getElementById('ord-price').value||0;
+  const count=+document.getElementById('ord-count').value||1;
+  const memo=document.getElementById('ord-memo').value.trim();
+  if(!title){alert('案件名を入力してください');return;}
+  const order={id:Date.now(),editorId:currentEditorId,ym,title,price,count,memo,status:'unpaid',createdAt:new Date().toISOString()};
+  editorOrders.push(order); localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
+  closeOrderModal(); renderEditorMonthFilter(); renderEditorOrders();
+  toast('発注を記録しました ✓');
+}
+
+function generateInvoice(){
+  if(!currentEditorId){alert('編集者を選択してください');return;}
+  const ed=editors.find(e=>e.id===currentEditorId); if(!ed)return;
+  const ym=document.getElementById('editor-month-filter')?.value||'';
+  const orders=editorOrders.filter(o=>o.editorId===currentEditorId&&(!ym||o.ym===ym)&&o.status!=='paid');
+  if(!orders.length){alert('未払いの発注がありません');return;}
+  const total=orders.reduce((s,o)=>s+(o.price*o.count),0);
+  const ymLabel=ym||new Date().toISOString().slice(0,7);
+  const rows=orders.map(o=>`<tr><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">${o.ym||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">${o.title}</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:right;">¥${fmt(o.price)}</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:center;">${o.count}本</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700;">¥${fmt(o.price*o.count)}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>請求書_${ed.name}_${ymLabel}</title>
+  <style>body{font-family:'Noto Sans JP',sans-serif;padding:40px;color:#1f2937;max-width:700px;margin:0 auto;}
+  h1{font-size:24px;font-weight:700;margin-bottom:4px;}
+  .meta{color:#6b7280;font-size:13px;margin-bottom:32px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{background:#f9fafb;padding:10px 12px;text-align:left;font-size:11px;color:#9ca3af;letter-spacing:.06em;border-bottom:2px solid #e5e7eb;}
+  .total{font-size:18px;font-weight:700;text-align:right;margin-top:20px;padding:16px;background:#f5f3ff;border-radius:10px;}
+  @media print{body{padding:20px;}}</style></head>
+  <body>
+  <h1>請 求 書</h1>
+  <div class="meta">発行日：${new Date().toLocaleDateString('ja-JP')}　／　対象期間：${ymLabel}　／　宛先：${ed.name} 様</div>
+  <table><thead><tr><th>年月</th><th>案件名</th><th>単価</th><th>本数</th><th>金額</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="total">合計金額（税込）：¥${fmt(total)}</div>
+  <div style="margin-top:40px;font-size:12px;color:#9ca3af;">※この請求書は動画外注管理システムより自動生成されました</div>
+  <script>window.onload=()=>window.print();</scr`+`ipt></body></html>`;
+  const w=window.open('','_blank'); w.document.write(html); w.document.close();
 }
 
 // ── HELPERS ──

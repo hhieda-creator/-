@@ -184,10 +184,17 @@ tr:hover td { background: #fafbff; }
 .client-tab.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
 .client-tab.add-tab { border-style: dashed; }
 
-.follower-chart { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; height: 120px; display: flex; align-items: flex-end; gap: 4px; overflow: hidden; }
-.fc-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.follower-chart { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px 18px 8px; height: 160px; display: flex; align-items: flex-end; gap: 3px; overflow-x: auto; overflow-y: hidden; position: relative; }
+.fc-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; width: 28px; position: relative; }
 .fc-bar { background: linear-gradient(180deg, #6d28d9, #a78bfa); border-radius: 3px 3px 0 0; min-height: 4px; transition: all 0.3s; width: 100%; }
+.fc-bar.has-post { background: linear-gradient(180deg, #e8305a, #f472b6); }
+.fc-bar-wrap .post-marker { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 10px; cursor: default; }
+.fc-bar-wrap .post-marker-label { display: none; position: absolute; top: -44px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; font-size: 9px; padding: 3px 6px; border-radius: 4px; white-space: nowrap; z-index: 10; pointer-events: none; }
+.fc-bar-wrap:hover .post-marker-label { display: block; }
 .fc-label { font-size: 8px; color: #9ca3af; white-space: nowrap; font-family: 'Space Mono', monospace; }
+.chart-legend { display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: #6b7280; flex-wrap: wrap; }
+.chart-legend span { display: flex; align-items: center; gap: 4px; }
+.chart-legend .dot { width: 10px; height: 10px; border-radius: 2px; }
 
 .cast-master-row { display: grid; grid-template-columns: 1fr 1fr 120px 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
 .cast-master-row input { background: #f9fafb; border: 1.5px solid #e5e7eb; color: #111827; border-radius: 7px; padding: 8px 12px; font-size: 13px; font-family: inherit; }
@@ -260,6 +267,14 @@ tr:hover td { background: #fafbff; }
       </div>
       <div class="field"><label>本数（発注数）</label>
         <input id="f-count" type="number" min="1" value="1" placeholder="1" oninput="updatePreview()">
+      </div>
+      <div class="field"><label>投稿アカウント</label>
+        <select id="f-account" onchange="updatePreview()">
+          <option value="">未設定</option>
+        </select>
+      </div>
+      <div class="field"><label>投稿日</label>
+        <input id="f-postdate" type="date" oninput="updatePreview()">
       </div>
       <div class="field"><label>進捗ステータス</label>
         <select id="f-status" onchange="updatePreview()">
@@ -728,6 +743,7 @@ window.onload = () => {
   renderAccountSelect();
   renderEditorPage();
   renderFormEditorSelect();
+  renderFormAccountSelect();
   renderShopDatalist();
 };
 
@@ -779,6 +795,15 @@ document.addEventListener('change',e=>{
     updatePreview();
   }
 });
+
+// ── ACCOUNT SELECT IN FORM ──
+function renderFormAccountSelect(){
+  const sel=document.getElementById('f-account'); if(!sel)return;
+  const cur=sel.value;
+  const accNames=[...new Set(Object.keys(accounts).map(k=>k.replace(/__tiktok$|__instagram$/,'')).filter(Boolean))];
+  sel.innerHTML='<option value="">未設定</option>';
+  accNames.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;if(name===cur)o.selected=true;sel.appendChild(o);});
+}
 
 // ── EDITOR SELECT IN FORM ──
 function renderFormEditorSelect(){
@@ -979,6 +1004,8 @@ function saveProject(){
     pastFolders:getUrlList('past-folders-list'),outputFolders:getUrlList('output-folders-list'),
     assignedEditor:document.getElementById('f-editor').value,status:document.getElementById('f-status').value||'pending',
     videoCount:+document.getElementById('f-count')?.value||1,
+    accountName:document.getElementById('f-account')?.value||'',
+    postDate:document.getElementById('f-postdate')?.value||'',
     shop:document.getElementById('f-shop').value,editNotes:document.getElementById('f-edit-notes').value,
     special:document.getElementById('f-special').value,introText:document.getElementById('f-intro-text').value,
     font:document.getElementById('f-font').value,telopStyle:document.getElementById('f-telop-style').value,
@@ -1045,6 +1072,9 @@ function loadProject(id){
   document.getElementById('f-title').value=p.title||''; document.getElementById('f-ym').value=p.ym||'';
   document.getElementById('f-status').value=p.status||'pending';
   if(document.getElementById('f-count'))document.getElementById('f-count').value=p.videoCount||1;
+  renderFormAccountSelect();
+  if(document.getElementById('f-account'))document.getElementById('f-account').value=p.accountName||'';
+  if(document.getElementById('f-postdate'))document.getElementById('f-postdate').value=p.postDate||'';
   renderFormEditorSelect();
   document.getElementById('f-editor').value=p.assignedEditor||'';
   document.getElementById('f-type').value=p.type||'cabaret'; document.getElementById('f-client').value=p.client||'';
@@ -1435,17 +1465,22 @@ function fileToBase64(file){
 }
 
 // ── ACCOUNT ──
+function getAccountNames(){
+  return [...new Set(Object.keys(accounts).map(k=>k.replace(/__tiktok$|__instagram$/,'')))].filter(Boolean);
+}
 function renderAccountSelect(){
   const sel=document.getElementById('acc-select');const cur=sel.value;
   sel.innerHTML='<option value="">-- 選択 --</option>';
-  Object.keys(accounts).forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;if(name===cur)o.selected=true;sel.appendChild(o);});
+  getAccountNames().forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;if(name===cur)o.selected=true;sel.appendChild(o);});
 }
 function addAccount(){
   const name=document.getElementById('acc-new-name').value.trim();if(!name)return;
-  if(!accounts[name])accounts[name]=[];
+  const key=`${name}__tiktok`;
+  if(!accounts[key])accounts[key]=[];
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
   document.getElementById('acc-new-name').value='';
-  renderAccountSelect(); document.getElementById('acc-select').value=name; loadAccountData();
+  renderAccountSelect(); renderFormAccountSelect();
+  document.getElementById('acc-select').value=name; loadAccountData();
   toast(`「${name}」を追加しました`);
 }
 function loadAccountData(){
@@ -1467,35 +1502,109 @@ function saveAccountRecord(){
 }
 function renderAccountStats(name){
   const key=`${name}__${currentSNSTab}`;
-  // Also try legacy key (backwards compat)
   const recs=accounts[key]||accounts[name]||[];
   const snsLabel=currentSNSTab==='instagram'?'📸 Instagram':'🎵 TikTok';
   const out=document.getElementById('account-stats-output');
-  if(!recs.length){out.innerHTML=`<div class="card"><div class="empty-state"><div class="big">👤</div>${snsLabel} のデータがまだありません</div></div>`;return;}
-  const latest=recs[recs.length-1];const prev=recs.length>1?recs[recs.length-2]:null;
-  const diff=prev?latest.followers-prev.followers:0;
+
+  // 紐づいた案件（投稿日あり）
+  const linkedProjects=projects.filter(p=>p.accountName===name&&p.postDate).sort((a,b)=>a.postDate.localeCompare(b.postDate));
+  // 投稿日セット
+  const postDates=new Set(linkedProjects.map(p=>p.postDate));
+
+  if(!recs.length && !linkedProjects.length){
+    out.innerHTML=`<div class="card"><div class="empty-state"><div class="big">👤</div>${snsLabel} のデータがまだありません<br><span style="font-size:12px;color:#9ca3af;">案件作成時にアカウントを選択すると動画と紐づきます</span></div></div>`;
+    return;
+  }
+
+  const latest=recs.length?recs[recs.length-1]:null;
+  const prev=recs.length>1?recs[recs.length-2]:null;
+  const diff=(latest&&prev)?latest.followers-prev.followers:0;
   const maxF=Math.max(...recs.map(r=>r.followers),1);
-  const bars=recs.slice(-30).map(r=>`<div class="fc-bar-wrap"><div class="fc-bar" style="height:${Math.round(r.followers/maxF*90)}px;" title="${r.date}: ${r.followers.toLocaleString()}フォロワー"></div><div class="fc-label">${r.date.slice(5)}</div></div>`).join('');
-  const rows=[...recs].reverse().slice(0,30).map(r=>`<tr>
-    <td style="font-family:'Space Mono',monospace;font-size:11px;">${r.date}</td>
-    <td><strong>${r.followers.toLocaleString()}</strong></td>
+
+  // フォロワーグラフ（投稿日マーカー付き）
+  const barsHtml=recs.slice(-30).map(r=>{
+    const hasPost=postDates.has(r.date);
+    const postTitles=linkedProjects.filter(p=>p.postDate===r.date).map(p=>p.title).join(', ');
+    return `<div class="fc-bar-wrap">
+      ${hasPost?`<span class="post-marker" title="${postTitles}">🎬</span><span class="post-marker-label">${postTitles}</span>`:''}
+      <div class="fc-bar${hasPost?' has-post':''}" style="height:${Math.round(r.followers/maxF*110)}px;"></div>
+      <div class="fc-label">${r.date.slice(5)}</div>
+    </div>`;
+  }).join('');
+
+  // サマリ数値
+  const statsHtml=latest?`
+    <div class="stats-grid">
+      <div class="stat-card"><div class="slabel">最新フォロワー</div><div class="sval purple">${fmt(latest.followers)}</div></div>
+      <div class="stat-card"><div class="slabel">前回比</div><div class="sval ${diff>=0?'green':'pink'}">${diff>=0?'+':''}${fmt(diff)}</div></div>
+      <div class="stat-card"><div class="slabel">直近再生数</div><div class="sval blue">${fmt(latest.views||0)}</div></div>
+      <div class="stat-card"><div class="slabel">紐づき動画数</div><div class="sval pink">${linkedProjects.length}本</div></div>
+    </div>`:'';
+
+  // フォロワー推移グラフ
+  const chartHtml=recs.length?`
+    <div class="card">
+      <div class="sec">フォロワー推移 <span style="font-size:11px;font-weight:400;color:#9ca3af;">（🎬 = 動画投稿日）</span></div>
+      <div class="follower-chart">${barsHtml}</div>
+      <div class="chart-legend">
+        <span><span class="dot" style="background:linear-gradient(#6d28d9,#a78bfa);"></span>通常</span>
+        <span><span class="dot" style="background:linear-gradient(#e8305a,#f472b6);"></span>動画投稿日</span>
+      </div>
+    </div>`:'';
+
+  // 紐づき動画インサイト一覧
+  const pColors={'48h':'badge-pink','1week':'badge-purple','1month':'badge-blue'};
+  const pLabels={'48h':'48h','1week':'1週間','1month':'1ヶ月'};
+  const videoRows=linkedProjects.map(p=>{
+    const periods=['48h','1week','1month'];
+    const insightCells=periods.map(period=>{
+      const r=insightRecords[`${p.id}_${period}`];
+      if(!r)return `<td style="color:#d1d5db;font-size:12px;" colspan="1">—</td>`;
+      const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):'—';
+      return `<td><div style="font-size:11px;"><div><strong>${fmt(r.views||0)}</strong> <span style="color:#9ca3af;font-size:10px;">再生</span></div><div style="color:#6d28d9;">${er}% ER</div><div style="color:#6b7280;font-size:10px;">保存${fmt(r.saves||0)}</div></div></td>`;
+    }).join('');
+    return `<tr>
+      <td><span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.postDate||'—'}</span></td>
+      <td><strong style="font-size:13px;">${p.title}</strong><div style="font-size:11px;color:#9ca3af;">${typeLabels[p.type]||''}</div></td>
+      ${insightCells}
+    </tr>`;
+  }).join('');
+
+  const videoTableHtml=linkedProjects.length?`
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:16px 20px 0;"><div class="sec">紐づき動画 インサイト一覧</div></div>
+      <table>
+        <thead><tr>
+          <th>投稿日</th><th>動画タイトル</th>
+          <th><span class="badge badge-pink" style="font-size:10px;">48h</span></th>
+          <th><span class="badge badge-purple" style="font-size:10px;">1週間</span></th>
+          <th><span class="badge badge-blue" style="font-size:10px;">1ヶ月</span></th>
+        </tr></thead>
+        <tbody>${videoRows}</tbody>
+      </table>
+    </div>`:'<div class="card"><div style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0;">案件作成時にこのアカウントを選択すると動画インサイトが表示されます</div></div>';
+
+  // アカウントデータテーブル
+  const accRows=recs.length?[...recs].reverse().slice(0,20).map(r=>`<tr>
+    <td style="font-family:'Space Mono',monospace;font-size:11px;">${r.date}${postDates.has(r.date)?` <span style="color:#e8305a;">🎬</span>`:''}</td>
+    <td><strong>${(r.followers||0).toLocaleString()}</strong></td>
     <td>${(r.views||0).toLocaleString()}</td>
     <td>${(r.profile||0).toLocaleString()}</td>
     <td>${(r.likes||0).toLocaleString()}</td>
     <td style="color:#6b7280;font-size:12px;">${r.memo||'—'}</td>
-    <td><button class="btn-sm danger" onclick="deleteAccountRecord('${name}','${r.date}')">削除</button></td></tr>`).join('');
+    <td><button class="btn-sm danger" onclick="deleteAccountRecord('${name}','${r.date}')">削除</button></td>
+  </tr>`).join(''):'';
+
+  const accTableHtml=recs.length?`
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:16px 20px 0;"><div class="sec">アカウントデータ記録</div></div>
+      <table><thead><tr><th>日付</th><th>フォロワー</th><th>再生数</th><th>プロフ訪問</th><th>いいね</th><th>メモ</th><th></th></tr></thead>
+      <tbody>${accRows}</tbody></table>
+    </div>`:'';
+
   out.innerHTML=`
     <div style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:10px;">${snsLabel} · ${name}</div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="slabel">最新フォロワー数</div><div class="sval purple">${fmt(latest.followers)}</div></div>
-      <div class="stat-card"><div class="slabel">前回比 増減</div><div class="sval ${diff>=0?'green':'pink'}">${diff>=0?'+':''}${fmt(diff)}</div></div>
-      <div class="stat-card"><div class="slabel">直近 再生数</div><div class="sval blue">${fmt(latest.views||0)}</div></div>
-      <div class="stat-card"><div class="slabel">直近 いいね</div><div class="sval pink">${fmt(latest.likes||0)}</div></div>
-    </div>
-    <div class="card"><div class="sec">フォロワー推移（直近30件）</div><div class="follower-chart">${bars}</div></div>
-    <div class="card" style="padding:0;overflow:hidden;"><table>
-      <thead><tr><th>日付</th><th>フォロワー</th><th>再生数</th><th>プロフ訪問</th><th>いいね</th><th>メモ</th><th></th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
+    ${statsHtml}${chartHtml}${videoTableHtml}${accTableHtml}`;
 }
 function deleteAccountRecord(name,date){
   if(!confirm('削除しますか？'))return;

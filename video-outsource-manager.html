@@ -1017,6 +1017,12 @@ function saveProject(){
     duration:document.getElementById('f-duration')?.value||'',narration:document.getElementById('f-narration')?.value||'',
     preview:document.getElementById('preview-box').textContent,createdAt:new Date().toISOString(),
   };
+  // 案件元名でアカウントを自動マッチング
+  if(!proj.accountName && proj.client){
+    const accNames = getAccountNames ? getAccountNames() : [];
+    const matched = accNames.find(n => n === proj.client || proj.client.includes(n) || n.includes(proj.client));
+    if(matched) proj.accountName = matched;
+  }
   projects.unshift(proj);
   localStorage.setItem('vop_projects',JSON.stringify(projects));
   syncToGAS(proj);
@@ -1380,28 +1386,50 @@ function switchSNSTab(sns){
 }
 
 // ── SCREENSHOT AI READ ──
+async function callVisionAI(base64, mediaType, prompt){
+  // GAS URLが設定されていればGASプロキシ経由、なければ直接
+  if(GAS_URL){
+    const gasVisionUrl = GAS_URL.replace('/exec','/exec'); // same URL, different action
+    const res = await fetch(GAS_URL+'?action=vision', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'vision', image:base64, mediaType, prompt})
+    });
+    const text = await res.text();
+    return text;
+  } else {
+    // 直接呼び出し（ローカルテスト用）
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+          {type:'text',text:prompt}
+        ]}]
+      })
+    });
+    const data = await res.json();
+    return data.content?.map(b=>b.text||'').join('')||'';
+  }
+}
+
 async function handleInsightScreenshot(file){
   if(!file||!file.type.startsWith('image/'))return;
   const statusEl=document.getElementById('insight-ss-status');
+  if(!GAS_URL){
+    statusEl.textContent='⚙️ GAS URLが未設定です。サイドバーの「⚙️ GAS URL設定」でURLを登録してください。';
+    statusEl.style.color='#d97706';
+    return;
+  }
   statusEl.textContent='📸 AIが読み取り中...';
   statusEl.style.color='#6d28d9';
   try{
     const base64=await fileToBase64(file);
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:500,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
-          {type:'text',text:`このTikTokインサイトのスクリーンショットから数値を読み取り、以下のJSON形式のみで返してください（説明不要）:
+    const prompt=`このTikTokインサイトのスクリーンショットから数値を読み取り、以下のJSON形式のみで返してください（説明不要）:
 {"views":数値,"likes":数値,"comments":数値,"shares":数値,"saves":数値,"followers":数値,"profileClicks":数値,"watchTime":秒数}
-数値が見当たらない場合は0。watchTimeは"平均視聴時間"を秒に変換（例:12.3sなら12.3）。`}
-        ]}]
-      })
-    });
-    const data=await res.json();
-    const text=data.content?.map(b=>b.text||'').join('')||'';
-    const json=JSON.parse(text.replace(/```json|```/g,'').trim());
+数値が見当たらない場合は0。watchTimeは平均視聴時間を秒に変換（例:12.3sなら12.3）。`;
+    const text = await callVisionAI(base64, file.type, prompt);
+    const clean = text.replace(/```json|```/g,'').trim();
+    const json = JSON.parse(clean);
     const fields={views:'m-views',likes:'m-likes',comments:'m-comments',shares:'m-shares',saves:'m-saves',followers:'m-followers',profileClicks:'m-profile',watchTime:'m-watchtime'};
     let filled=[];
     Object.entries(fields).forEach(([key,id])=>{
@@ -1412,7 +1440,7 @@ async function handleInsightScreenshot(file){
     statusEl.textContent=`✅ ${filled.length}項目を自動入力しました`;
     statusEl.style.color='#059669';
   }catch(e){
-    statusEl.textContent='❌ 読み取りに失敗しました。手動で入力してください。';
+    statusEl.textContent=`❌ 読み取り失敗: ${e.message}`;
     statusEl.style.color='#dc2626';
     console.error(e);
   }
@@ -1421,26 +1449,22 @@ async function handleInsightScreenshot(file){
 async function handleAccScreenshot(file){
   if(!file||!file.type.startsWith('image/'))return;
   const statusEl=document.getElementById('acc-ss-status');
+  if(!GAS_URL){
+    statusEl.textContent='⚙️ GAS URLが未設定です。サイドバーの「⚙️ GAS URL設定」でURLを登録してください。';
+    statusEl.style.color='#d97706';
+    return;
+  }
   statusEl.textContent='📸 AIが読み取り中...';
   statusEl.style.color='#6d28d9';
   try{
     const base64=await fileToBase64(file);
     const snsLabel=currentSNSTab==='instagram'?'Instagram':'TikTok';
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:400,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
-          {type:'text',text:`この${snsLabel}アカウントインサイトのスクリーンショットから数値を読み取り、以下のJSON形式のみで返してください（説明不要）:
+    const prompt=`この${snsLabel}アカウントインサイトのスクリーンショットから数値を読み取り、以下のJSON形式のみで返してください（説明不要）:
 {"followers":フォロワー総数,"views":再生数合計,"profileVisits":プロフィール訪問数,"likes":いいね合計}
-数値が見当たらない場合は0。`}
-        ]}]
-      })
-    });
-    const data=await res.json();
-    const text=data.content?.map(b=>b.text||'').join('')||'';
-    const json=JSON.parse(text.replace(/```json|```/g,'').trim());
+数値が見当たらない場合は0。`;
+    const text = await callVisionAI(base64, file.type, prompt);
+    const clean = text.replace(/```json|```/g,'').trim();
+    const json = JSON.parse(clean);
     const map={followers:'acc-followers',views:'acc-views',profileVisits:'acc-profile',likes:'acc-likes'};
     let filled=[];
     Object.entries(map).forEach(([key,id])=>{
@@ -1450,8 +1474,9 @@ async function handleAccScreenshot(file){
     statusEl.textContent=`✅ ${filled.length}項目を自動入力しました`;
     statusEl.style.color='#059669';
   }catch(e){
-    statusEl.textContent='❌ 読み取りに失敗しました。手動で入力してください。';
+    statusEl.textContent=`❌ 読み取り失敗: ${e.message}`;
     statusEl.style.color='#dc2626';
+    console.error(e);
   }
 }
 

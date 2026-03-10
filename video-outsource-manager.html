@@ -415,13 +415,27 @@ tr:hover td { background: #fafbff; }
       <div class="ttab" onclick="switchPeriod(this,'1month')">📆 1ヶ月後</div>
     </div>
     <div id="period-label" style="font-size:12px;color:#6b7280;margin-bottom:14px;font-weight:600;"></div>
+    <!-- スクショ読み取りエリア -->
+    <div id="insight-ss-drop" style="border:2px dashed #d1d5db;border-radius:12px;padding:18px 20px;text-align:center;margin-bottom:16px;cursor:pointer;background:#fafbfc;transition:border-color .2s;"
+      onclick="document.getElementById('insight-ss-input').click()"
+      ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
+      ondragleave="this.style.borderColor='#d1d5db'"
+      ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleInsightScreenshot(event.dataTransfer.files[0])">
+      <div style="font-size:22px;margin-bottom:4px;">📸</div>
+      <div style="font-size:13px;font-weight:600;color:#374151;">インサイトのスクショをここにドロップ or クリック</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">AIが数値を自動読み取りします</div>
+      <input type="file" id="insight-ss-input" accept="image/*" style="display:none" onchange="handleInsightScreenshot(this.files[0])">
+    </div>
+    <div id="insight-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:18px;"></div>
     <div class="form-grid col3">
       <div class="field"><label>再生数</label><input id="m-views" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>いいね数</label><input id="m-likes" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>コメント数</label><input id="m-comments" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>シェア数</label><input id="m-shares" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>保存数</label><input id="m-saves" type="number" placeholder="0" oninput="renderInsights()"></div>
-      <div class="field"><label>フォロワー増加</label><input id="m-followers" type="number" placeholder="0" oninput="renderInsights()"></div>
+      <div class="field"><label>フォロワー獲得数</label><input id="m-followers" type="number" placeholder="0" oninput="renderInsights()"></div>
+      <div class="field"><label>プロフィールクリック</label><input id="m-profile" type="number" placeholder="0" oninput="renderInsights()"></div>
+      <div class="field"><label>視聴者離脱時間 (秒)</label><input id="m-watchtime" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
     </div>
     <div class="actions">
       <button class="btn btn-primary" onclick="saveInsightRecord()">💾 この期間の数値を保存</button>
@@ -437,6 +451,11 @@ tr:hover td { background: #fafbff; }
   <div class="page-header"><div><h1>アカウント管理</h1><p>アカウント全体のフォロワー推移・インサイトを記録</p></div></div>
   <div class="card">
     <div class="sec">アカウントを選択</div>
+    <!-- SNS種別タブ -->
+    <div class="timeline-tabs" style="margin-bottom:14px;">
+      <div class="ttab active" id="sns-tab-tiktok" onclick="switchSNSTab('tiktok')">🎵 TikTok</div>
+      <div class="ttab" id="sns-tab-instagram" onclick="switchSNSTab('instagram')">📸 Instagram</div>
+    </div>
     <div class="form-grid">
       <div class="field"><label>アカウント名</label><select id="acc-select" onchange="loadAccountData()"><option value="">-- 選択 --</option></select></div>
       <div class="field"><label>新規アカウント追加</label>
@@ -446,6 +465,18 @@ tr:hover td { background: #fafbff; }
   </div>
   <div class="card" id="acc-record-card" style="display:none;">
     <div class="sec">今日の数値を記録</div>
+    <!-- スクショ読み取り -->
+    <div id="acc-ss-drop" style="border:2px dashed #d1d5db;border-radius:12px;padding:18px 20px;text-align:center;margin-bottom:16px;cursor:pointer;background:#fafbfc;transition:border-color .2s;"
+      onclick="document.getElementById('acc-ss-input').click()"
+      ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
+      ondragleave="this.style.borderColor='#d1d5db'"
+      ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleAccScreenshot(event.dataTransfer.files[0])">
+      <div style="font-size:22px;margin-bottom:4px;">📸</div>
+      <div style="font-size:13px;font-weight:600;color:#374151;">アカウントインサイトのスクショをドロップ or クリック</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">AIがフォロワー数・再生数などを自動読み取り</div>
+      <input type="file" id="acc-ss-input" accept="image/*" style="display:none" onchange="handleAccScreenshot(this.files[0])">
+    </div>
+    <div id="acc-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:18px;"></div>
     <div class="form-grid col3">
       <div class="field"><label>記録日</label><input id="acc-date" type="date"></div>
       <div class="field"><label>フォロワー数（総数）</label><input id="acc-followers" type="number" placeholder="0"></div>
@@ -477,9 +508,10 @@ tr:hover td { background: #fafbff; }
     </div>
   </div>
   <div class="card">
-    <div style="display:grid;grid-template-columns:1fr 1fr 130px 36px;gap:8px;padding:0 0 10px;border-bottom:1.5px solid #f3f4f6;margin-bottom:12px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 130px 36px;gap:8px;padding:0 0 10px;border-bottom:1.5px solid #f3f4f6;margin-bottom:12px;">
       <div style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:0.08em;">名前</div>
       <div style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:0.08em;">Instagram ID</div>
+      <div style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:0.08em;">TikTok ID</div>
       <div style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:0.08em;">所属店舗</div>
       <div></div>
     </div>
@@ -1186,8 +1218,10 @@ function switchPeriod(el,period){
   document.getElementById('period-label').textContent=labels[period]||'';
   if(currentInsightProjectId){
     const key=`${currentInsightProjectId}_${period}`;const rec=insightRecords[key];
-    if(rec)['views','likes','comments','shares','saves','followers'].forEach(f=>{const el=document.getElementById(`m-${f}`);if(el)el.value=rec[f]||'';});
-    else ['views','likes','comments','shares','saves','followers'].forEach(f=>{const el=document.getElementById(`m-${f}`);if(el)el.value='';});
+    const mFields=['views','likes','comments','shares','saves','followers'];
+    const mExtra={profile:'profileClicks',watchtime:'watchTime'};
+    if(rec){mFields.forEach(f=>{const el=document.getElementById(`m-${f}`);if(el)el.value=rec[f]||'';});Object.entries(mExtra).forEach(([id,key])=>{const el=document.getElementById(`m-${id}`);if(el)el.value=rec[key]||'';});}
+    else{mFields.forEach(f=>{const el=document.getElementById(`m-${f}`);if(el)el.value='';});Object.keys(mExtra).forEach(id=>{const el=document.getElementById(`m-${id}`);if(el)el.value='';});}
     renderInsights();
   }
 }
@@ -1212,7 +1246,7 @@ function removeVideo(){
   document.getElementById('insights-output').innerHTML='';
   toast('動画を削除しました');
 }
-function getMetricVals(){return{views:+document.getElementById('m-views').value||0,likes:+document.getElementById('m-likes').value||0,comments:+document.getElementById('m-comments').value||0,shares:+document.getElementById('m-shares').value||0,saves:+document.getElementById('m-saves').value||0,followers:+document.getElementById('m-followers').value||0};}
+function getMetricVals(){return{views:+document.getElementById('m-views').value||0,likes:+document.getElementById('m-likes').value||0,comments:+document.getElementById('m-comments').value||0,shares:+document.getElementById('m-shares').value||0,saves:+document.getElementById('m-saves').value||0,followers:+document.getElementById('m-followers').value||0,profileClicks:+document.getElementById('m-profile')?.value||0,watchTime:+document.getElementById('m-watchtime')?.value||0};}
 function renderInsights(){
   const vals=getMetricVals(); if(!vals.views)return;
   const er=((vals.likes+vals.comments+vals.shares)/vals.views*100).toFixed(2);
@@ -1262,6 +1296,8 @@ function renderInsightHistory(projId){
         <div class="irc-stat"><div class="sv">${fmt(r.shares||0)}</div><div class="sk">シェア</div></div>
         <div class="irc-stat"><div class="sv">${fmt(r.saves||0)}</div><div class="sk">保存</div></div>
         <div class="irc-stat"><div class="sv">${er}%</div><div class="sk">ER</div></div>
+        ${r.profileClicks?`<div class="irc-stat"><div class="sv">${fmt(r.profileClicks)}</div><div class="sk">プロフCL</div></div>`:''}
+        ${r.watchTime?`<div class="irc-stat"><div class="sv">${r.watchTime}s</div><div class="sk">平均視聴</div></div>`:''}
       </div>
       <button class="btn-sm danger" onclick="deleteInsightRecord(${projId},'${p}')">削除</button>
     </div>`;
@@ -1291,7 +1327,7 @@ async function generateReport(){
   const prompt=`あなたはSNS動画マーケティングの専門家です。以下のデータを分析して日本語でパフォーマンスレポートを作成してください。
 案件名: ${proj?.title||'不明'} / 期間: ${periodLabel}
 業種: ${typeLabels[proj?.type]||'不明'}
-再生数:${vals.views} いいね:${vals.likes} コメント:${vals.comments} シェア:${vals.shares} 保存:${vals.saves} フォロワー増加:${vals.followers}
+再生数:${vals.views} いいね:${vals.likes} コメント:${vals.comments} シェア:${vals.shares} 保存:${vals.saves} フォロワー獲得:${vals.followers} プロフクリック:${vals.profileClicks||0} 平均視聴時間:${vals.watchTime||0}秒
 ER:${er}% 保存率:${saveR}%
 以下3点を各3〜4文で（箇条書き不要）:1.パフォーマンス総評 2.良かった点・改善すべき点 3.次回への具体的な改善提案`;
   try{
@@ -1302,6 +1338,100 @@ ER:${er}% 保存率:${saveR}%
     const secs=text.split(/\n\n+/).filter(Boolean);
     reportEl.innerHTML=`<h3>📊 AIパフォーマンスレポート</h3>${secs.map(s=>`<div class="report-item"><div class="report-dot"></div><p>${s.replace(/\n/g,'<br>')}</p></div>`).join('')}`;
   }catch(e){reportEl.innerHTML=`<h3>📊 AIレポート</h3><div style="color:var(--accent);">エラー: ${e.message}</div>`;}
+}
+
+// ── SNS TAB ──
+let currentSNSTab = 'tiktok';
+function switchSNSTab(sns){
+  currentSNSTab = sns;
+  document.querySelectorAll('[id^="sns-tab-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`sns-tab-${sns}`)?.classList.add('active');
+  loadAccountData();
+}
+
+// ── SCREENSHOT AI READ ──
+async function handleInsightScreenshot(file){
+  if(!file||!file.type.startsWith('image/'))return;
+  const statusEl=document.getElementById('insight-ss-status');
+  statusEl.textContent='📸 AIが読み取り中...';
+  statusEl.style.color='#6d28d9';
+  try{
+    const base64=await fileToBase64(file);
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:500,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
+          {type:'text',text:`このTikTokインサイトのスクリーンショットから数値を読み取り、以下のJSON形式のみで返してください（説明不要）:
+{"views":数値,"likes":数値,"comments":数値,"shares":数値,"saves":数値,"followers":数値,"profileClicks":数値,"watchTime":秒数}
+数値が見当たらない場合は0。watchTimeは"平均視聴時間"を秒に変換（例:12.3sなら12.3）。`}
+        ]}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.map(b=>b.text||'').join('')||'';
+    const json=JSON.parse(text.replace(/```json|```/g,'').trim());
+    const fields={views:'m-views',likes:'m-likes',comments:'m-comments',shares:'m-shares',saves:'m-saves',followers:'m-followers',profileClicks:'m-profile',watchTime:'m-watchtime'};
+    let filled=[];
+    Object.entries(fields).forEach(([key,id])=>{
+      const el=document.getElementById(id);
+      if(el&&json[key]!=null&&json[key]!==0){el.value=json[key];filled.push(key);}
+    });
+    renderInsights();
+    statusEl.textContent=`✅ ${filled.length}項目を自動入力しました`;
+    statusEl.style.color='#059669';
+  }catch(e){
+    statusEl.textContent='❌ 読み取りに失敗しました。手動で入力してください。';
+    statusEl.style.color='#dc2626';
+    console.error(e);
+  }
+}
+
+async function handleAccScreenshot(file){
+  if(!file||!file.type.startsWith('image/'))return;
+  const statusEl=document.getElementById('acc-ss-status');
+  statusEl.textContent='📸 AIが読み取り中...';
+  statusEl.style.color='#6d28d9';
+  try{
+    const base64=await fileToBase64(file);
+    const snsLabel=currentSNSTab==='instagram'?'Instagram':'TikTok';
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:400,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
+          {type:'text',text:`この${snsLabel}アカウントインサイトのスクリーンショットから数値を読み取り、以下のJSON形式のみで返してください（説明不要）:
+{"followers":フォロワー総数,"views":再生数合計,"profileVisits":プロフィール訪問数,"likes":いいね合計}
+数値が見当たらない場合は0。`}
+        ]}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.map(b=>b.text||'').join('')||'';
+    const json=JSON.parse(text.replace(/```json|```/g,'').trim());
+    const map={followers:'acc-followers',views:'acc-views',profileVisits:'acc-profile',likes:'acc-likes'};
+    let filled=[];
+    Object.entries(map).forEach(([key,id])=>{
+      const el=document.getElementById(id);
+      if(el&&json[key]!=null&&json[key]!==0){el.value=json[key];filled.push(key);}
+    });
+    statusEl.textContent=`✅ ${filled.length}項目を自動入力しました`;
+    statusEl.style.color='#059669';
+  }catch(e){
+    statusEl.textContent='❌ 読み取りに失敗しました。手動で入力してください。';
+    statusEl.style.color='#dc2626';
+  }
+}
+
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
 }
 
 // ── ACCOUNT ──
@@ -1326,44 +1456,51 @@ function loadAccountData(){
 }
 function saveAccountRecord(){
   const name=document.getElementById('acc-select').value;if(!name){alert('アカウントを選択してください');return;}
-  const rec={date:document.getElementById('acc-date').value,followers:+document.getElementById('acc-followers').value||0,views:+document.getElementById('acc-views').value||0,profile:+document.getElementById('acc-profile').value||0,likes:+document.getElementById('acc-likes').value||0,memo:document.getElementById('acc-memo').value,savedAt:new Date().toISOString()};
-  if(!accounts[name])accounts[name]=[];
-  const idx=accounts[name].findIndex(r=>r.date===rec.date);
-  if(idx>=0)accounts[name][idx]=rec;else accounts[name].push(rec);
-  accounts[name].sort((a,b)=>a.date>b.date?1:-1);
+  const key=`${name}__${currentSNSTab}`;
+  const rec={date:document.getElementById('acc-date').value||new Date().toISOString().slice(0,10),sns:currentSNSTab,followers:+document.getElementById('acc-followers').value||0,views:+document.getElementById('acc-views').value||0,profile:+document.getElementById('acc-profile').value||0,likes:+document.getElementById('acc-likes').value||0,memo:document.getElementById('acc-memo').value,savedAt:new Date().toISOString()};
+  if(!accounts[key])accounts[key]=[];
+  const idx=accounts[key].findIndex(r=>r.date===rec.date);
+  if(idx>=0)accounts[key][idx]=rec;else accounts[key].push(rec);
+  accounts[key].sort((a,b)=>a.date>b.date?1:-1);
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
-  renderAccountStats(name);toast('記録しました');
+  renderAccountStats(name);toast('記録しました ✓');
 }
 function renderAccountStats(name){
-  const recs=accounts[name]||[];const out=document.getElementById('account-stats-output');
-  if(!recs.length){out.innerHTML=`<div class="card"><div class="empty-state"><div class="big">👤</div>まだ記録がありません</div></div>`;return;}
+  const key=`${name}__${currentSNSTab}`;
+  // Also try legacy key (backwards compat)
+  const recs=accounts[key]||accounts[name]||[];
+  const snsLabel=currentSNSTab==='instagram'?'📸 Instagram':'🎵 TikTok';
+  const out=document.getElementById('account-stats-output');
+  if(!recs.length){out.innerHTML=`<div class="card"><div class="empty-state"><div class="big">👤</div>${snsLabel} のデータがまだありません</div></div>`;return;}
   const latest=recs[recs.length-1];const prev=recs.length>1?recs[recs.length-2]:null;
   const diff=prev?latest.followers-prev.followers:0;
   const maxF=Math.max(...recs.map(r=>r.followers),1);
-  const bars=recs.slice(-14).map(r=>`<div class="fc-bar-wrap"><div class="fc-bar" style="height:${Math.round(r.followers/maxF*90)}px;" title="${r.date}: ${r.followers.toLocaleString()}"></div><div class="fc-label">${r.date.slice(5)}</div></div>`).join('');
-  const rows=[...recs].reverse().slice(0,20).map(r=>`<tr>
+  const bars=recs.slice(-30).map(r=>`<div class="fc-bar-wrap"><div class="fc-bar" style="height:${Math.round(r.followers/maxF*90)}px;" title="${r.date}: ${r.followers.toLocaleString()}フォロワー"></div><div class="fc-label">${r.date.slice(5)}</div></div>`).join('');
+  const rows=[...recs].reverse().slice(0,30).map(r=>`<tr>
     <td style="font-family:'Space Mono',monospace;font-size:11px;">${r.date}</td>
     <td><strong>${r.followers.toLocaleString()}</strong></td>
-    <td>${r.views.toLocaleString()}</td>
-    <td>${r.profile.toLocaleString()}</td>
-    <td>${r.likes.toLocaleString()}</td>
+    <td>${(r.views||0).toLocaleString()}</td>
+    <td>${(r.profile||0).toLocaleString()}</td>
+    <td>${(r.likes||0).toLocaleString()}</td>
     <td style="color:#6b7280;font-size:12px;">${r.memo||'—'}</td>
     <td><button class="btn-sm danger" onclick="deleteAccountRecord('${name}','${r.date}')">削除</button></td></tr>`).join('');
   out.innerHTML=`
+    <div style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:10px;">${snsLabel} · ${name}</div>
     <div class="stats-grid">
       <div class="stat-card"><div class="slabel">最新フォロワー数</div><div class="sval purple">${fmt(latest.followers)}</div></div>
       <div class="stat-card"><div class="slabel">前回比 増減</div><div class="sval ${diff>=0?'green':'pink'}">${diff>=0?'+':''}${fmt(diff)}</div></div>
-      <div class="stat-card"><div class="slabel">直近 再生数</div><div class="sval blue">${fmt(latest.views)}</div></div>
-      <div class="stat-card"><div class="slabel">直近 いいね</div><div class="sval pink">${fmt(latest.likes)}</div></div>
+      <div class="stat-card"><div class="slabel">直近 再生数</div><div class="sval blue">${fmt(latest.views||0)}</div></div>
+      <div class="stat-card"><div class="slabel">直近 いいね</div><div class="sval pink">${fmt(latest.likes||0)}</div></div>
     </div>
-    <div class="card"><div class="sec">フォロワー推移（直近14件）</div><div class="follower-chart">${bars}</div></div>
+    <div class="card"><div class="sec">フォロワー推移（直近30件）</div><div class="follower-chart">${bars}</div></div>
     <div class="card" style="padding:0;overflow:hidden;"><table>
       <thead><tr><th>日付</th><th>フォロワー</th><th>再生数</th><th>プロフ訪問</th><th>いいね</th><th>メモ</th><th></th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
 }
 function deleteAccountRecord(name,date){
   if(!confirm('削除しますか？'))return;
-  accounts[name]=accounts[name].filter(r=>r.date!==date);
+  const key=`${name}__${currentSNSTab}`;
+  if(accounts[key])accounts[key]=accounts[key].filter(r=>r.date!==date);
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
   renderAccountStats(name);toast('削除しました');
 }
@@ -1388,9 +1525,10 @@ function renderCastMasterPage(){
   );
 
   document.getElementById('cast-master-list').innerHTML=filtered.map(c=>`
-    <div class="cast-master-row" id="cm-${c._i}">
+    <div class="cast-master-row" id="cm-${c._i}" style="grid-template-columns:1fr 1fr 1fr 130px 36px;">
       <input type="text" value="${(c.name||'').replace(/"/g,'&quot;')}" placeholder="名前">
       <input type="text" value="${(c.id||'').replace(/"/g,'&quot;')}" placeholder="@instagram_id">
+      <input type="text" value="${(c.tiktok||'').replace(/"/g,'&quot;')}" placeholder="@tiktok_id">
       <input type="text" value="${(c.shop||'').replace(/"/g,'&quot;')}" placeholder="所属店舗">
       <button class="btn-icon" onclick="deleteCastMasterRow(${c._i})">✕</button>
     </div>`).join('');
@@ -1406,7 +1544,7 @@ function saveCastMaster(){
   rows.forEach(row=>{
     const id=row.id.replace('cm-','');
     const inputs=row.querySelectorAll('input');
-    updated[id]={name:inputs[0].value.trim(),id:inputs[1].value.trim(),yomi:inputs[0].value.trim(),shop:inputs[2].value.trim()};
+    updated[id]={name:inputs[0].value.trim(),id:inputs[1].value.trim(),tiktok:inputs[2].value.trim(),yomi:inputs[0].value.trim(),shop:inputs[3].value.trim()};
   });
   // Merge: update existing, keep non-displayed untouched
   castMaster=castMaster.map((c,i)=>updated[i]?{...updated[i]}:c).filter(c=>c.name||c.id);

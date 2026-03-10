@@ -258,6 +258,9 @@ tr:hover td { background: #fafbff; }
           <option value="">未割当</option>
         </select>
       </div>
+      <div class="field"><label>本数（発注数）</label>
+        <input id="f-count" type="number" min="1" value="1" placeholder="1" oninput="updatePreview()">
+      </div>
       <div class="field"><label>進捗ステータス</label>
         <select id="f-status" onchange="updatePreview()">
           <option value="pending">⬜ 未着手</option>
@@ -552,15 +555,42 @@ tr:hover td { background: #fafbff; }
 <!-- 編集者追加モーダル -->
 <div id="modal-editor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:16px;padding:32px;width:400px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
-    <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">編集者を追加</h3>
-    <div class="form-grid full" style="gap:14px;">
-      <div class="field"><label>名前</label><input id="ed-name" type="text" placeholder="例: 田中さん"></div>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;" id="ed-modal-title">編集者を追加</h3>
+    <input type="hidden" id="ed-edit-id" value="">
+    <div class="form-grid" style="gap:14px;">
+      <div class="field"><label>名前 *</label><input id="ed-name" type="text" placeholder="例: 田中さん"></div>
       <div class="field"><label>デフォルト単価（円）</label><input id="ed-rate" type="number" placeholder="例: 5000"></div>
-      <div class="field"><label>連絡先・メモ</label><input id="ed-memo" type="text" placeholder="任意"></div>
+      <div class="field"><label>インボイス登録番号</label><input id="ed-invoice" type="text" placeholder="例: T1234567890123"></div>
+      <div class="field"><label>支払サイクル</label>
+        <select id="ed-cycle">
+          <option value="month_end">末締め当月払い</option>
+          <option value="month_end_next" selected>末締め翌月払い</option>
+          <option value="month_end_next2">末締め翌々月払い</option>
+          <option value="immediate">都度払い</option>
+        </select>
+      </div>
+      <div class="field"><label>連絡先（メール等）</label><input id="ed-contact" type="text" placeholder="例: editor@example.com"></div>
+      <div class="field"><label>メモ</label><input id="ed-memo" type="text" placeholder="任意"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
       <button class="btn btn-secondary" onclick="closeEditorModal()">キャンセル</button>
-      <button class="btn btn-primary" onclick="saveEditor()">追加</button>
+      <button class="btn btn-primary" onclick="saveEditor()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自動発注確認モーダル -->
+<div id="modal-auto-order" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px;width:440px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">💰 発注を自動記録しますか？</h3>
+    <p id="auto-order-desc" style="font-size:13px;color:#6b7280;margin-bottom:20px;"></p>
+    <div class="form-grid full" style="gap:14px;">
+      <div class="field"><label>本数</label><input id="ao-count" type="number" value="1" min="1"></div>
+      <div class="field"><label>単価（円）</label><input id="ao-price" type="number"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeAutoOrderModal()">スキップ</button>
+      <button class="btn btn-primary" onclick="confirmAutoOrder()">発注を記録する</button>
     </div>
   </div>
 </div>
@@ -916,6 +946,7 @@ function saveProject(){
     refVideos:getUrlList('ref-videos-list'),styleFolders:getUrlList('style-folders-list'),
     pastFolders:getUrlList('past-folders-list'),outputFolders:getUrlList('output-folders-list'),
     assignedEditor:document.getElementById('f-editor').value,status:document.getElementById('f-status').value||'pending',
+    videoCount:+document.getElementById('f-count')?.value||1,
     shop:document.getElementById('f-shop').value,editNotes:document.getElementById('f-edit-notes').value,
     special:document.getElementById('f-special').value,introText:document.getElementById('f-intro-text').value,
     font:document.getElementById('f-font').value,telopStyle:document.getElementById('f-telop-style').value,
@@ -931,6 +962,7 @@ function saveProject(){
   localStorage.setItem('vop_projects',JSON.stringify(projects));
   syncToGAS(proj);
   toast('案件を保存しました ✓');
+  if(proj.assignedEditor) triggerAutoOrder(proj);
 }
 
 function clearForm(){
@@ -980,6 +1012,7 @@ function loadProject(id){
   const p=projects.find(x=>x.id===id);if(!p)return;
   document.getElementById('f-title').value=p.title||''; document.getElementById('f-ym').value=p.ym||'';
   document.getElementById('f-status').value=p.status||'pending';
+  if(document.getElementById('f-count'))document.getElementById('f-count').value=p.videoCount||1;
   renderFormEditorSelect();
   document.getElementById('f-editor').value=p.assignedEditor||'';
   document.getElementById('f-type').value=p.type||'cabaret'; document.getElementById('f-client').value=p.client||'';
@@ -1001,6 +1034,46 @@ function loadProject(id){
 }
 function copyProjectText(id){const p=projects.find(x=>x.id===id);if(!p)return;navigator.clipboard.writeText(p.preview||'').then(()=>toast('指示書をコピーしました'));}
 function deleteProject(id){if(!confirm('この案件を削除しますか？'))return;projects=projects.filter(x=>x.id!==id);localStorage.setItem('vop_projects',JSON.stringify(projects));renderFilingClientTabs();renderFiling();toast('削除しました');}
+
+// ── AUTO ORDER ──
+let _pendingAutoOrder = null;
+const cycleLabels = {month_end:"末締め当月払い",month_end_next:"末締め翌月払い",month_end_next2:"末締め翌々月払い",immediate:"都度払い"};
+
+function triggerAutoOrder(proj) {
+  const ed = editors.find(e => e.name === proj.assignedEditor);
+  if(!ed) return;
+  const exists = editorOrders.find(o => o.editorId===ed.id && o.projectId===proj.id);
+  if(exists) return;
+  _pendingAutoOrder = {proj, ed};
+  document.getElementById("auto-order-desc").textContent =
+    `案件「${proj.title}」を ${ed.name} さんに発注記録します（単価: ¥${(ed.rate||0).toLocaleString()} / ${cycleLabels[ed.cycle]||""}）`;
+  document.getElementById("ao-price").value = ed.rate || "";
+  document.getElementById("ao-count").value = 1;
+  document.getElementById("modal-auto-order").style.display = "flex";
+}
+
+function closeAutoOrderModal() {
+  document.getElementById("modal-auto-order").style.display = "none";
+  _pendingAutoOrder = null;
+}
+
+function confirmAutoOrder() {
+  if(!_pendingAutoOrder) return;
+  const {proj, ed} = _pendingAutoOrder;
+  const count = +document.getElementById("ao-count").value || 1;
+  const price = +document.getElementById("ao-price").value || ed.rate || 0;
+  const order = {
+    id: Date.now(), editorId: ed.id, projectId: proj.id,
+    ym: proj.ym||"", title: proj.title||"",
+    price, count, memo: "自動発注", status: "unpaid",
+    paymentCycle: ed.cycle||"month_end_next",
+    createdAt: new Date().toISOString()
+  };
+  editorOrders.push(order);
+  localStorage.setItem("vop_editor_orders", JSON.stringify(editorOrders));
+  closeAutoOrderModal();
+  toast(`💰 ${ed.name} さんへの発注を記録しました（¥${(price*count).toLocaleString()}）`);
+}
 
 // ── STATUS CYCLE ──
 function cycleStatus(id){
@@ -1029,8 +1102,22 @@ function syncToGAS(proj){
     outputFolder: (proj.outputFolders&&proj.outputFolders[0])||'',
     updatedAt: new Date().toISOString()
   };
-  fetch(GAS_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(row)})
-    .catch(()=>{});
+  // Use form POST with no-cors (works around CORS for GAS)
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = GAS_URL;
+  form.target = 'gas-iframe';
+  form.style.display = 'none';
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'data';
+  input.value = JSON.stringify(row);
+  form.appendChild(input);
+  let iframe = document.getElementById('gas-iframe');
+  if(!iframe){ iframe=document.createElement('iframe'); iframe.name='gas-iframe'; iframe.id='gas-iframe'; iframe.style.display='none'; document.body.appendChild(iframe); }
+  document.body.appendChild(form);
+  form.submit();
+  setTimeout(()=>form.remove(), 1000);
 }
 
 function syncAllToGAS(){
@@ -1412,7 +1499,10 @@ function renderEditorPage(){
     document.getElementById('editor-empty').style.display='';
     return;
   }
-  tabs.innerHTML=editors.map(e=>`<div class="client-tab${e.id===currentEditorId?' active':''}" onclick="selectEditor(${e.id})">${e.name}</div>`).join('');
+  tabs.innerHTML=editors.map(e=>`<div class="client-tab${e.id===currentEditorId?' active':''}" onclick="selectEditor(${e.id})" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;">
+    <span style="font-weight:700;">${e.name}</span>
+    <span style="font-size:10px;opacity:0.7;">¥${(e.rate||0).toLocaleString()} / ${cycleLabels[e.cycle]||'未設定'}</span>
+  </div>`).join('');
   if(currentEditorId) renderEditorOrders();
   else { document.getElementById('editor-filter-bar').style.display='none'; document.getElementById('editor-stats').style.display='none'; document.getElementById('editor-orders-card').style.display='none'; document.getElementById('editor-empty').style.display=''; }
 }
@@ -1441,11 +1531,13 @@ function renderEditorOrders(){
   const card=document.getElementById('editor-orders-card'); const tbody=document.getElementById('editor-orders-tbody');
   const statsEl=document.getElementById('editor-stats');
 
+  const ed=editors.find(e=>e.id===currentEditorId);
   const totalAmt=orders.reduce((s,o)=>s+(o.price*o.count),0);
   const unpaidAmt=orders.filter(o=>o.status!=='paid').reduce((s,o)=>s+(o.price*o.count),0);
   const paidAmt=orders.filter(o=>o.status==='paid').reduce((s,o)=>s+(o.price*o.count),0);
   statsEl.style.display='';
-  statsEl.innerHTML=`<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+  const invoiceBar = ed ? `<div style="font-size:12px;color:#6b7280;margin-bottom:12px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:12px 16px;background:#f9fafb;border-radius:8px;">${ed.invoice?`<span>📋 インボイス: <strong>${ed.invoice}</strong></span>`:''}<span>💳 ${cycleLabels[ed.cycle]||'支払未設定'}</span><span>💴 単価: <strong>¥${(ed.rate||0).toLocaleString()}</strong></span>${ed.contact?`<span>📧 ${ed.contact}</span>`:''}<button class="btn btn-secondary" onclick="editEditor(${currentEditorId})" style="margin-left:auto;font-size:11px;padding:4px 12px;">✏️ 編集</button></div>` : '';
+  statsEl.innerHTML=invoiceBar+`<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
     <div class="stat-card"><div class="slabel">合計金額</div><div class="sval purple">¥${fmt(totalAmt)}</div></div>
     <div class="stat-card"><div class="slabel">未払い</div><div class="sval pink">¥${fmt(unpaidAmt)}</div></div>
     <div class="stat-card"><div class="slabel">支払済み</div><div class="sval green">¥${fmt(paidAmt)}</div></div>
@@ -1479,15 +1571,39 @@ function deleteOrder(id){
 }
 
 function showAddEditorModal(){ document.getElementById('modal-editor').style.display='flex'; setTimeout(()=>document.getElementById('ed-name').focus(),50); }
-function closeEditorModal(){ document.getElementById('modal-editor').style.display='none'; ['ed-name','ed-rate','ed-memo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); }
+function closeEditorModal(){ document.getElementById('modal-editor').style.display='none'; ['ed-name','ed-rate','ed-invoice','ed-contact','ed-memo','ed-edit-id'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); const cyc=document.getElementById('ed-cycle');if(cyc)cyc.value='month_end_next'; const ttl=document.getElementById('ed-modal-title');if(ttl)ttl.textContent='編集者を追加'; }
 function saveEditor(){
   const name=document.getElementById('ed-name').value.trim(); if(!name){alert('名前を入力してください');return;}
   const rate=+document.getElementById('ed-rate').value||0;
+  const invoice=document.getElementById('ed-invoice').value.trim();
+  const cycle=document.getElementById('ed-cycle').value||'month_end_next';
+  const contact=document.getElementById('ed-contact')?.value.trim()||'';
   const memo=document.getElementById('ed-memo').value.trim();
-  const ed={id:Date.now(),name,rate,memo};
-  editors.push(ed); localStorage.setItem('vop_editors',JSON.stringify(editors));
-  closeEditorModal(); currentEditorId=ed.id; renderEditorPage(); renderFormEditorSelect(); selectEditor(ed.id);
-  toast(`「${name}」を追加しました`);
+  const editId=+document.getElementById('ed-edit-id')?.value||0;
+  if(editId){
+    const idx=editors.findIndex(e=>e.id===editId);
+    if(idx>=0) editors[idx]={...editors[idx],name,rate,invoice,cycle,contact,memo};
+    localStorage.setItem('vop_editors',JSON.stringify(editors));
+    closeEditorModal(); renderEditorPage(); renderFormEditorSelect(); renderEditorOrders();
+    toast(`「${name}」を更新しました`);
+  } else {
+    const ed={id:Date.now(),name,rate,invoice,cycle,contact,memo};
+    editors.push(ed); localStorage.setItem('vop_editors',JSON.stringify(editors));
+    closeEditorModal(); currentEditorId=ed.id; renderEditorPage(); renderFormEditorSelect(); selectEditor(ed.id);
+    toast(`「${name}」を追加しました`);
+  }
+}
+function editEditor(id){
+  const ed=editors.find(e=>e.id===id); if(!ed)return;
+  const ttl=document.getElementById('ed-modal-title');if(ttl)ttl.textContent='編集者を編集';
+  document.getElementById('ed-edit-id').value=ed.id;
+  document.getElementById('ed-name').value=ed.name||'';
+  document.getElementById('ed-rate').value=ed.rate||'';
+  document.getElementById('ed-invoice').value=ed.invoice||'';
+  document.getElementById('ed-cycle').value=ed.cycle||'month_end_next';
+  const contact=document.getElementById('ed-contact');if(contact)contact.value=ed.contact||'';
+  document.getElementById('ed-memo').value=ed.memo||'';
+  document.getElementById('modal-editor').style.display='flex';
 }
 
 function showAddOrderModal(){
@@ -1531,6 +1647,8 @@ function generateInvoice(){
   const total=orders.reduce((s,o)=>s+(o.price*o.count),0);
   const ymLabel=ym||new Date().toISOString().slice(0,7);
   const rows=orders.map(o=>`<tr><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">${o.ym||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">${o.title}</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:right;">¥${fmt(o.price)}</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:center;">${o.count}本</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700;">¥${fmt(o.price*o.count)}</td></tr>`).join('');
+  const invoiceNum = ed.invoice ? `<div style="font-size:13px;color:#6b7280;margin-bottom:8px;">インボイス登録番号: <strong>${ed.invoice}</strong></div>` : "";
+  const cycleText = cycleLabels[ed.cycle]||"";
   const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>請求書_${ed.name}_${ymLabel}</title>
   <style>body{font-family:'Noto Sans JP',sans-serif;padding:40px;color:#1f2937;max-width:700px;margin:0 auto;}
   h1{font-size:24px;font-weight:700;margin-bottom:4px;}
@@ -1541,7 +1659,7 @@ function generateInvoice(){
   @media print{body{padding:20px;}}</style></head>
   <body>
   <h1>請 求 書</h1>
-  <div class="meta">発行日：${new Date().toLocaleDateString('ja-JP')}　／　対象期間：${ymLabel}　／　宛先：${ed.name} 様</div>
+  ${invoiceNum}  <div class="meta">発行日：${new Date().toLocaleDateString('ja-JP')}　／　対象期間：${ymLabel}　／　支払サイクル：${cycleText}　／　宛先：${ed.name} 様</div>
   <table><thead><tr><th>年月</th><th>案件名</th><th>単価</th><th>本数</th><th>金額</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="total">合計金額（税込）：¥${fmt(total)}</div>
   <div style="margin-top:40px;font-size:12px;color:#9ca3af;">※この請求書は動画外注管理システムより自動生成されました</div>

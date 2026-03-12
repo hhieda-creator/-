@@ -204,17 +204,162 @@ tr:hover td { background: #fafbff; }
 .toast.show { display: flex; }
 @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-@media (max-width: 900px) {
-  .sidebar { width: 56px; }
-  .sidebar .nav-item span, .logo .title, .logo .sub { display: none; }
-  .main { padding: 20px 16px; max-width: 100vw; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
-  .form-grid, .form-grid.col3 { grid-template-columns: 1fr; }
+/* ── DRAWER NAV ITEMS (mobile only, don't affect PC sidebar) ── */
+.drawer-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; cursor: pointer; font-size: 13px;
+  color: rgba(255,255,255,0.6); transition: all 0.15s;
+}
+.drawer-nav-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.drawer-nav-item .ni { font-size: 15px; width: 20px; text-align: center; }
+
+/* ── MOBILE BOTTOM TAB BAR ── */
+.mobile-header { display: none; }
+.bottom-tabbar { display: none; }
+.bottom-tabbar-more { display: none; }
+.mobile-drawer { display: none; }
+.drawer-overlay { display: none; }
+.drawer-nav-item { display: none; }
+
+@media (max-width: 768px) {
+  /* hide desktop sidebar */
+  .sidebar { display: none !important; }
+  .mobile-drawer { display: block; }
+  .drawer-nav-item { display: flex; }
+
+  /* mobile header */
+  .mobile-header {
+    display: flex; align-items: center; justify-content: space-between;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    background: var(--sidebar-bg); padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .mobile-header .mh-title { font-size: 14px; font-weight: 700; color: #fff; }
+  .mobile-header .mh-menu { font-size: 22px; cursor: pointer; color: #fff; background: none; border: none; padding: 4px; }
+
+  /* slide-in drawer */
+  .mobile-drawer {
+    position: fixed; top: 0; left: -100%; width: 80%; max-width: 280px;
+    height: 100vh; background: var(--sidebar-bg); z-index: 500;
+    overflow-y: auto; transition: left 0.25s ease;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+  }
+  .mobile-drawer.open { left: 0; }
+  .drawer-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 499;
+  }
+  .drawer-overlay.open { display: block; }
+
+  /* main content */
+  .main {
+    padding: 76px 14px 80px; max-width: 100vw;
+    min-height: 100vh;
+  }
+
+  /* bottom tab bar - main 5 items */
+  .bottom-tabbar {
+    display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--sidebar-bg); z-index: 200;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottom-tabbar .btab {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 2px; padding: 8px 4px 6px; cursor: pointer;
+    color: rgba(255,255,255,0.45); font-size: 10px; font-weight: 600;
+    border: none; background: none; transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-tabbar .btab .bti { font-size: 20px; line-height: 1; }
+  .bottom-tabbar .btab.active { color: #f472b6; }
+  .bottom-tabbar .btab:active { opacity: 0.7; }
+
+  /* layout helpers */
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-grid, .form-grid.col3 { grid-template-columns: 1fr; gap: 12px; }
+  .page-header { flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .page-header h1 { font-size: 18px; }
+  .card { padding: 16px; border-radius: 12px; }
+  .sec { font-size: 11px; margin-bottom: 12px; }
+
+  /* table scroll */
+  table { font-size: 12px; }
+  .card > table, .card > div > table { overflow-x: auto; display: block; }
+
+  /* buttons */
+  .btn { padding: 11px 16px; font-size: 13px; }
+  .btn-primary { width: 100%; justify-content: center; }
+  .actions { flex-direction: column; gap: 8px; }
+  .actions .btn { width: 100%; }
+
+  /* preview */
+  #preview-box { font-size: 12px; padding: 14px; min-height: 150px; }
+
+  /* cast master rows */
+  .cast-master-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .cast-master-row input:last-of-type { display: none; }
+
+  /* filing table */
+  #filing-tbody td:nth-child(4),
+  #filing-tbody td:nth-child(7) { display: none; }
+
+  /* toast */
+  .toast { bottom: 80px; left: 16px; right: 16px; width: auto; }
+
+  /* insight record card */
+  .insight-record-card { flex-direction: column; align-items: flex-start; }
+  .irc-stats { gap: 10px; }
+
+  /* modal */
+  #modal-editor > div,
+  #modal-order > div,
+  #modal-auto-order > div { width: 92vw !important; padding: 20px !important; max-height: 90vh; overflow-y: auto; }
+
+  /* follower chart */
+  .follower-chart { height: 120px; }
 }
 </style>
 </head>
 <body>
 <div class="app">
+
+<!-- Mobile Header -->
+<div class="mobile-header">
+  <div class="mh-title">🎬 VIDEO OPS</div>
+  <button class="mh-menu" onclick="toggleDrawer()">☰</button>
+</div>
+
+<!-- Drawer overlay -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer()"></div>
+
+<!-- Slide-in Drawer (mobile only) -->
+<div class="mobile-drawer" id="mobile-drawer">
+  <div style="padding:20px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.08);">
+    <div style="font-size:14px;font-weight:700;color:#fff;">🎬 VIDEO OPS</div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;">外注管理システム</div>
+  </div>
+  <div style="padding:8px 0;">
+    <div style="font-size:9px;color:rgba(255,255,255,0.3);padding:8px 16px 4px;letter-spacing:.12em;">設定</div>
+    <div class="drawer-nav-item" onclick="gotoMobileByPage('cast')"><span class="ni">⭐</span><span>キャストマスタ</span></div>
+    <div class="drawer-nav-item" onclick="gotoMobileByPage('editor')"><span class="ni">👷</span><span>編集者・請求管理</span></div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.3);padding:12px 16px 4px;letter-spacing:.12em;border-top:1px solid rgba(255,255,255,0.08);margin-top:8px;">データ管理</div>
+    <div class="drawer-nav-item" onclick="exportData();closeDrawer()"><span class="ni">💾</span><span>バックアップ保存</span></div>
+    <div class="drawer-nav-item" onclick="document.getElementById('import-input').click();closeDrawer()"><span class="ni">📂</span><span>バックアップ復元</span></div>
+    <div class="drawer-nav-item" onclick="exportCSV();closeDrawer()"><span class="ni">📊</span><span>CSV出力</span></div>
+    <div class="drawer-nav-item" onclick="syncAllToGAS();closeDrawer()"><span class="ni">🔄</span><span>シートに同期</span></div>
+    <div class="drawer-nav-item" onclick="setGasUrl();closeDrawer()"><span class="ni">⚙️</span><span>GAS URL設定</span></div>
+  </div>
+</div>
+
+<!-- Bottom Tab Bar (mobile) -->
+<div class="bottom-tabbar">
+  <button class="btab active" id="btab-new" onclick="gotoMobile(this,'new')"><span class="bti">✏️</span>指示書</button>
+  <button class="btab" id="btab-filing" onclick="gotoMobile(this,'filing')"><span class="bti">📁</span>案件</button>
+  <button class="btab" id="btab-insights" onclick="gotoMobile(this,'insights')"><span class="bti">📊</span>インサイト</button>
+  <button class="btab" id="btab-account" onclick="gotoMobile(this,'account')"><span class="bti">👤</span>アカウント</button>
+  <button class="btab" id="btab-more" onclick="toggleDrawer()"><span class="bti">☰</span>もっと</button>
+</div>
 
 <nav class="sidebar">
   <div class="logo">
@@ -1937,6 +2082,51 @@ function generateInvoice(){
   <div style="margin-top:40px;font-size:12px;color:#9ca3af;">※この請求書は動画外注管理システムより自動生成されました</div>
   <script>window.onload=()=>window.print();</scr`+`ipt></body></html>`;
   const w=window.open('','_blank'); w.document.write(html); w.document.close();
+}
+
+// ── MOBILE ──
+function toggleDrawer(){
+  document.getElementById('mobile-drawer').classList.toggle('open');
+  document.getElementById('drawer-overlay').classList.toggle('open');
+}
+function closeDrawer(){
+  document.getElementById('mobile-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+function gotoMobileByPage(page){
+  closeDrawer();
+  // update bottom tabbar if applicable
+  const btab = document.getElementById(`btab-${page}`);
+  if(btab){ document.querySelectorAll('.btab').forEach(b=>b.classList.remove('active')); btab.classList.add('active'); }
+  // navigate
+  const sideEl = document.querySelector(`.sidebar [data-page="${page}"]`);
+  if(sideEl) goto(sideEl, page);
+  else {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    const pg = document.getElementById(`page-${page}`);
+    if(pg){ pg.classList.add('active'); }
+    if(page==='cast') renderCastMasterPage();
+    if(page==='editor') renderEditorPage();
+    window.scrollTo(0,0);
+  }
+}
+function gotoMobile(el, page){
+  document.querySelectorAll('.btab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  // also update sidebar nav-item
+  const sideEl = document.querySelector(`[data-page="${page}"]`);
+  if(sideEl) goto(sideEl, page);
+  else {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    const pg = document.getElementById(`page-${page}`);
+    if(pg) pg.classList.add('active');
+    if(page==='filing') { renderFilingClientTabs(); renderFiling(); }
+    if(page==='insights') populateInsightProjects();
+    if(page==='account') renderAccountSelect();
+    if(page==='cast') renderCastMasterPage();
+    if(page==='editor') renderEditorPage();
+    window.scrollTo(0,0);
+  }
 }
 
 // ── HELPERS ──

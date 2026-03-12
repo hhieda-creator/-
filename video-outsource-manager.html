@@ -347,7 +347,8 @@ tr:hover td { background: #fafbff; }
     <div class="drawer-nav-item" onclick="exportData();closeDrawer()"><span class="ni">💾</span><span>バックアップ保存</span></div>
     <div class="drawer-nav-item" onclick="document.getElementById('import-input').click();closeDrawer()"><span class="ni">📂</span><span>バックアップ復元</span></div>
     <div class="drawer-nav-item" onclick="exportCSV();closeDrawer()"><span class="ni">📊</span><span>CSV出力</span></div>
-    <div class="drawer-nav-item" onclick="syncAllToGAS();closeDrawer()"><span class="ni">🔄</span><span>シートに同期</span></div>
+    <div class="drawer-nav-item" onclick="syncAllToGAS();closeDrawer()"><span class="ni">🔄</span><span>GASに保存</span></div>
+    <div class="drawer-nav-item" onclick="syncAndReload();closeDrawer()"><span class="ni">⬇️</span><span>GASから読込</span></div>
     <div class="drawer-nav-item" onclick="setGasUrl();closeDrawer()"><span class="ni">⚙️</span><span>GAS URL設定</span></div>
   </div>
 </div>
@@ -386,7 +387,8 @@ tr:hover td { background: #fafbff; }
     <div class="nav-item" onclick="exportData()" style="color:rgba(255,255,255,0.7);"><span class="ni">💾</span><span>バックアップ保存</span></div>
     <div class="nav-item" onclick="document.getElementById('import-input').click()" style="color:rgba(255,255,255,0.7);"><span class="ni">📂</span><span>バックアップ復元</span></div>
     <div class="nav-item" onclick="exportCSV()" style="color:rgba(255,255,255,0.7);"><span class="ni">📊</span><span>CSV出力</span></div>
-    <div class="nav-item" onclick="syncAllToGAS()" style="color:rgba(255,255,255,0.7);"><span class="ni">🔄</span><span>シートに同期</span></div>
+    <div class="nav-item" onclick="syncAllToGAS()" style="color:rgba(255,255,255,0.7);"><span class="ni">🔄</span><span>GASに保存</span></div>
+    <div class="nav-item" onclick="syncAndReload()" style="color:rgba(255,255,255,0.7);"><span class="ni">⬇️</span><span>GASから読込</span></div>
     <div class="nav-item" onclick="setGasUrl()" style="color:rgba(255,255,255,0.7);"><span class="ni">⚙️</span><span>GAS URL設定</span></div>
     <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
   </div>
@@ -801,6 +803,61 @@ let castMaster     = JSON.parse(localStorage.getItem('vop_casts')           || '
 let clients        = JSON.parse(localStorage.getItem('vop_clients')         || '["中洲ブルジュ"]');
 let accounts       = JSON.parse(localStorage.getItem('vop_accounts')        || '{}');
 let insightRecords = JSON.parse(localStorage.getItem('vop_insight_records') || '{}');
+let isSyncing      = false;
+
+// ── GAS DB SYNC ──
+async function gasLoad() {
+  if (!GAS_URL) return;
+  try {
+    const res = await fetch(GAS_URL + '?action=load', {method:'GET'});
+    const data = await res.json();
+    if (!data.success || !data.data) return;
+    const d = data.data;
+    if (d.projects     && d.projects.length)       { projects       = d.projects;       localStorage.setItem('vop_projects',        JSON.stringify(projects)); }
+    if (d.clients      && d.clients.length)        { clients        = d.clients;        localStorage.setItem('vop_clients',         JSON.stringify(clients)); }
+    if (d.accounts     && Object.keys(d.accounts).length) { accounts = d.accounts;     localStorage.setItem('vop_accounts',        JSON.stringify(accounts)); }
+    if (d.insightRecords && Object.keys(d.insightRecords).length) { insightRecords = d.insightRecords; localStorage.setItem('vop_insight_records', JSON.stringify(insightRecords)); }
+    if (d.editors      && d.editors.length)        { editors        = d.editors;        localStorage.setItem('vop_editors',         JSON.stringify(editors)); }
+    if (d.editorOrders && d.editorOrders.length)   { editorOrders   = d.editorOrders;   localStorage.setItem('vop_editor_orders',   JSON.stringify(editorOrders)); }
+    if (d.casts        && d.casts.length)          { castMaster     = d.casts;          localStorage.setItem('vop_casts',           JSON.stringify(castMaster)); }
+    refreshAllViews();
+    toast('☁️ データを同期しました');
+  } catch(e) {
+    console.warn('GAS load failed:', e);
+  }
+}
+
+async function gasSave() {
+  if (!GAS_URL || isSyncing) return;
+  isSyncing = true;
+  try {
+    const payload = {
+      action: 'save',
+      data: { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster }
+    };
+    await fetch(GAS_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {
+    console.warn('GAS save failed:', e);
+  } finally {
+    isSyncing = false;
+  }
+}
+
+function refreshAllViews() {
+  renderClientSelect();
+  renderFilingClientTabs();
+  renderFiling();
+  renderCastMasterPage();
+  populateInsightProjects();
+  renderAccountSelect();
+  renderEditorPage();
+  renderFormEditorSelect();
+  renderFormAccountSelect();
+}
 
 const DEFAULT_CASTS = [
   {name:'姫那月',       yomi:'ひなつき',          id:'@s63o312y',              shop:'中洲ブルジュ'},
@@ -874,7 +931,7 @@ const typeLabels = {cabaret:'キャバクラ', hostclub:'ホストクラブ', re
 const typeBadge  = {cabaret:'badge-pink', hostclub:'badge-purple', realestate:'badge-blue', restaurant:'badge-orange', beauty:'badge-purple', event:'badge-green', product:'badge-gray', corpbrand:'badge-blue', other:'badge-gray'};
 
 // ── INIT ──
-window.onload = () => {
+window.onload = async () => {
   document.getElementById('f-ym').value   = new Date().toISOString().slice(0,7);
   document.getElementById('acc-date').value = new Date().toISOString().slice(0,10);
   initUrlLists();
@@ -890,6 +947,12 @@ window.onload = () => {
   renderFormEditorSelect();
   renderFormAccountSelect();
   renderShopDatalist();
+  // GASからデータ読み込み（GAS URLが設定されていれば）
+  if (GAS_URL) {
+    showSyncBanner('☁️ GASからデータ読み込み中...');
+    await gasLoad();
+    hideSyncBanner();
+  }
 };
 
 // ── NAV ──
@@ -1171,6 +1234,7 @@ function saveProject(){
   projects.unshift(proj);
   localStorage.setItem('vop_projects',JSON.stringify(projects));
   syncToGAS(proj);
+  gasSave();
   toast('案件を保存しました ✓');
   if(proj.assignedEditor) triggerAutoOrder(proj);
 }
@@ -1334,9 +1398,15 @@ function syncToGAS(proj){
 }
 
 function syncAllToGAS(){
-  if(!GAS_URL){ alert('GAS URLが設定されていません。\n設定ページでURLを入力してください。'); return; }
-  projects.forEach(p=>syncToGAS(p));
-  toast('スプレッドシートに同期しました ✓');
+  if(!GAS_URL){alert('GAS URLが設定されていません');return;}
+  gasSave().then(()=>toast('☁️ 全データをGASに保存しました ✓'));
+}
+async function syncAndReload(){
+  if(!GAS_URL){alert('GAS URLが設定されていません');return;}
+  showSyncBanner('☁️ GASからデータ読み込み中...');
+  await gasLoad();
+  hideSyncBanner();
+  toast('☁️ GASから最新データを読み込みました ✓');
 }
 
 function setGasUrl(){
@@ -1455,6 +1525,7 @@ function saveInsightRecord(){
   localStorage.setItem('vop_insight_records',JSON.stringify(insightRecords));
   renderInsightHistory(currentInsightProjectId);
   toast(`${currentPeriod} の数値を保存しました`);
+  gasSave();
 }
 function renderInsightHistory(projId){
   const wrap=document.getElementById('insight-history-wrap');
@@ -1669,6 +1740,7 @@ function saveAccountRecord(){
   accounts[key].sort((a,b)=>a.date>b.date?1:-1);
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
   renderAccountStats(name);toast('記録しました ✓');
+  gasSave();
 }
 function renderAccountStats(name){
   const key=`${name}__${currentSNSTab}`;
@@ -1830,6 +1902,7 @@ function saveCastMaster(){
   localStorage.setItem('vop_casts',JSON.stringify(castMaster));
   renderCastMasterPage();
   toast('キャストマスタを保存しました ✓');
+  gasSave();
 }
 
 function resetCastMaster(){
@@ -2082,6 +2155,16 @@ function generateInvoice(){
   <div style="margin-top:40px;font-size:12px;color:#9ca3af;">※この請求書は動画外注管理システムより自動生成されました</div>
   <script>window.onload=()=>window.print();</scr`+`ipt></body></html>`;
   const w=window.open('','_blank'); w.document.write(html); w.document.close();
+}
+
+// ── SYNC BANNER ──
+function showSyncBanner(msg){
+  let b=document.getElementById('sync-banner');
+  if(!b){b=document.createElement('div');b.id='sync-banner';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#6d28d9;color:#fff;text-align:center;font-size:13px;font-weight:600;padding:10px;';document.body.appendChild(b);}
+  b.textContent=msg;b.style.display='block';
+}
+function hideSyncBanner(){
+  const b=document.getElementById('sync-banner');if(b)b.style.display='none';
 }
 
 // ── MOBILE ──

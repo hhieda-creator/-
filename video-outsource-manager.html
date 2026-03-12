@@ -809,8 +809,9 @@ let isSyncing      = false;
 async function gasLoad() {
   if (!GAS_URL) return;
   try {
-    const res = await fetch(GAS_URL + '?action=load', {method:'GET'});
-    const data = await res.json();
+    const res = await fetch(GAS_URL + '?action=load', {method:'GET', redirect:'follow'});
+    const text = await res.text();
+    const data = JSON.parse(text);
     if (!data.success || !data.data) return;
     const d = data.data;
     if (d.projects     && d.projects.length)       { projects       = d.projects;       localStorage.setItem('vop_projects',        JSON.stringify(projects)); }
@@ -831,15 +832,11 @@ async function gasSave() {
   if (!GAS_URL || isSyncing) return;
   isSyncing = true;
   try {
-    const payload = {
-      action: 'save',
-      data: { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster }
-    };
-    await fetch(GAS_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
+    const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster };
+    // GETパラメータ方式（CORSを完全回避）
+    const encoded = encodeURIComponent(JSON.stringify(data));
+    const url = GAS_URL + '?action=save&data=' + encoded;
+    await fetch(url, { method:'GET', mode:'no-cors' });
   } catch(e) {
     console.warn('GAS save failed:', e);
   } finally {

@@ -833,10 +833,16 @@ async function gasSave() {
   isSyncing = true;
   try {
     const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster };
-    // GETパラメータ方式（CORSを完全回避）
-    const encoded = encodeURIComponent(JSON.stringify(data));
-    const url = GAS_URL + '?action=save&data=' + encoded;
-    await fetch(url, { method:'GET', mode:'no-cors' });
+    // iframe trick: GASへno-cors GETで送信（CORS完全回避）
+    // データをチャンク分割してキーごとに送信
+    const keys = Object.keys(data);
+    for (const key of keys) {
+      const chunk = encodeURIComponent(JSON.stringify(data[key]));
+      const url = GAS_URL + '?action=saveKey&key=' + key + '&val=' + chunk;
+      if (url.length < 7000) {
+        await fetch(url, { method:'GET', mode:'no-cors' });
+      }
+    }
   } catch(e) {
     console.warn('GAS save failed:', e);
   } finally {

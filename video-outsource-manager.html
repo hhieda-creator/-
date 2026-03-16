@@ -814,13 +814,14 @@ async function gasLoad() {
     const data = JSON.parse(text);
     if (!data.success || !data.data) return;
     const d = data.data;
-    if (d.projects     && d.projects.length)       { projects       = d.projects;       localStorage.setItem('vop_projects',        JSON.stringify(projects)); }
-    if (d.clients      && d.clients.length)        { clients        = d.clients;        localStorage.setItem('vop_clients',         JSON.stringify(clients)); }
-    if (d.accounts     && Object.keys(d.accounts).length) { accounts = d.accounts;     localStorage.setItem('vop_accounts',        JSON.stringify(accounts)); }
-    if (d.insightRecords && Object.keys(d.insightRecords).length) { insightRecords = d.insightRecords; localStorage.setItem('vop_insight_records', JSON.stringify(insightRecords)); }
-    if (d.editors      && d.editors.length)        { editors        = d.editors;        localStorage.setItem('vop_editors',         JSON.stringify(editors)); }
-    if (d.editorOrders && d.editorOrders.length)   { editorOrders   = d.editorOrders;   localStorage.setItem('vop_editor_orders',   JSON.stringify(editorOrders)); }
-    if (d.casts        && d.casts.length)          { castMaster     = d.casts;          localStorage.setItem('vop_casts',           JSON.stringify(castMaster)); }
+    // GASのデータがローカルより多い場合のみ上書き（ローカルを守る）
+    if (d.projects     && d.projects.length > projects.length)       { projects       = d.projects;       localStorage.setItem('vop_projects',        JSON.stringify(projects)); }
+    if (d.clients      && d.clients.length > clients.length)         { clients        = d.clients;        localStorage.setItem('vop_clients',         JSON.stringify(clients)); }
+    if (d.accounts     && Object.keys(d.accounts).length > Object.keys(accounts).length) { accounts = d.accounts; localStorage.setItem('vop_accounts', JSON.stringify(accounts)); }
+    if (d.insightRecords && Object.keys(d.insightRecords).length > Object.keys(insightRecords).length) { insightRecords = d.insightRecords; localStorage.setItem('vop_insight_records', JSON.stringify(insightRecords)); }
+    if (d.editors      && d.editors.length > editors.length)         { editors        = d.editors;        localStorage.setItem('vop_editors',         JSON.stringify(editors)); }
+    if (d.editorOrders && d.editorOrders.length > editorOrders.length){ editorOrders  = d.editorOrders;   localStorage.setItem('vop_editor_orders',   JSON.stringify(editorOrders)); }
+    if (d.casts        && d.casts.length > castMaster.length)        { castMaster     = d.casts;          localStorage.setItem('vop_casts',           JSON.stringify(castMaster)); }
     refreshAllViews();
     toast('☁️ データを同期しました');
   } catch(e) {
@@ -1945,7 +1946,7 @@ function importData(e) {
   reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if(!data.version) throw new Error('フォーマットが違います');
+      if(!data.version && !data.projects && !data.editors) throw new Error('フォーマットが違います');
       if(!confirm(`バックアップを復元しますか？
 現在のデータは上書きされます。
 

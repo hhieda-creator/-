@@ -1857,10 +1857,12 @@ function renderAccountStats(name){
   const snsLabel=currentSNSTab==='instagram'?'📸 Instagram':'🎵 TikTok';
   const out=document.getElementById('account-stats-output');
 
-  // 紐づいた案件（投稿日あり）
-  const linkedProjects=projects.filter(p=>p.accountName===name&&p.postDate).sort((a,b)=>a.postDate.localeCompare(b.postDate));
+  // 紐づいた案件：accountName一致 OR client一致（投稿日なしも含む）
+  const linkedProjects=projects.filter(p=>
+    p.accountName===name || p.client===name
+  ).sort((a,b)=>(b.postDate||b.ym||'').localeCompare(a.postDate||a.ym||''));
   // 投稿日セット
-  const postDates=new Set(linkedProjects.map(p=>p.postDate));
+  const postDates=new Set(linkedProjects.filter(p=>p.postDate).map(p=>p.postDate));
 
   if(!recs.length && !linkedProjects.length){
     out.innerHTML=`<div class="card"><div class="empty-state"><div class="big">👤</div>${snsLabel} のデータがまだありません<br><span style="font-size:12px;color:#9ca3af;">案件作成時にアカウントを選択すると動画と紐づきます</span></div></div>`;
@@ -1915,15 +1917,48 @@ function renderAccountStats(name){
       return `<td><div style="font-size:11px;line-height:1.6;"><div><strong>${fmt(r.views||0)}</strong> <span style="color:#9ca3af;font-size:10px;">再生</span></div><div style="color:#6d28d9;">${er}% ER</div><div style="color:#6b7280;font-size:10px;">保存${fmt(r.saves||0)}</div>${r.watchTime?`<div style="color:#0891b2;font-size:10px;">⏱${r.watchTime}s</div>`:''} ${r.fullViewRate?`<div style="color:#059669;font-size:10px;">フル${r.fullViewRate}%</div>`:''} ${r.dropoutTime?`<div style="color:#ef4444;font-size:10px;">離脱${r.dropoutTime}s</div>`:''}</div></td>`;
     }).join('');
     return `<tr>
-      <td><span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.postDate||'—'}</span></td>
+      <td><span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.postDate||p.ym||'—'}</span></td>
       <td><strong style="font-size:13px;">${p.title}</strong><div style="font-size:11px;color:#9ca3af;">${typeLabels[p.type]||''}</div></td>
       ${insightCells}
     </tr>`;
   }).join('');
 
+  // 動画比較グラフ（再生数バー）
+  const compareChartHtml = linkedProjects.length ? (()=>{
+    const period = '1week'; // デフォルトは1週間データで比較
+    const videoData = linkedProjects.map(p=>{
+      const r48 = insightRecords[`${p.id}_48h`];
+      const r1w = insightRecords[`${p.id}_1week`];
+      const r1m = insightRecords[`${p.id}_1month`];
+      const best = r1m||r1w||r48;
+      return {title:p.title, postDate:p.postDate||p.ym||'', r48, r1w, r1m, best};
+    }).filter(x=>x.best);
+    if(!videoData.length) return '';
+    const maxV = Math.max(...videoData.map(x=>x.best.views||0),1);
+    const bars = videoData.map((x,i)=>{
+      const r=x.best; const h=Math.round((r.views||0)/maxV*120);
+      const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):0;
+      const colors=['#6d28d9','#e8305a','#0891b2','#059669','#d97706','#7c3aed'];
+      const c=colors[i%colors.length];
+      return `<div style="flex:1;min-width:60px;max-width:120px;text-align:center;">
+        <div style="font-size:10px;color:${c};font-weight:700;margin-bottom:4px;">${fmt(r.views||0)}</div>
+        <div style="background:${c};height:${h}px;border-radius:6px 6px 0 0;margin:0 4px;opacity:0.85;" title="${x.title}"></div>
+        <div style="font-size:9px;color:#6b7280;margin-top:4px;line-height:1.3;word-break:break-all;">${x.title.length>12?x.title.slice(0,12)+'…':x.title}</div>
+        <div style="font-size:9px;color:#6d28d9;">${er}%ER</div>
+        ${r.watchTime?`<div style="font-size:9px;color:#0891b2;">⏱${r.watchTime}s</div>`:''}
+        ${r.dropoutTime?`<div style="font-size:9px;color:#ef4444;">離脱${r.dropoutTime}s</div>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="card">
+      <div class="sec">📊 動画パフォーマンス比較 <span style="font-size:11px;font-weight:400;color:#9ca3af;">（最新期間のデータ）</span></div>
+      <div style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;padding:8px 0 4px;">${bars}</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:8px;">※ 再生数でソート。インサイト未入力の動画は非表示</div>
+    </div>`;
+  })() : '';
+
   const videoTableHtml=linkedProjects.length?`
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:16px 20px 0;"><div class="sec">紐づき動画 インサイト一覧</div></div>
+      <div style="padding:16px 20px 0;"><div class="sec">動画一覧 &amp; インサイト</div></div>
       <table>
         <thead><tr>
           <th>投稿日</th><th>動画タイトル</th>
@@ -1955,7 +1990,7 @@ function renderAccountStats(name){
 
   out.innerHTML=`
     <div style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:10px;">${snsLabel} · ${name}</div>
-    ${statsHtml}${chartHtml}${videoTableHtml}${accTableHtml}`;
+    ${statsHtml}${chartHtml}${compareChartHtml}${videoTableHtml}${accTableHtml}`;
 }
 function deleteAccountRecord(name,date){
   if(!confirm('削除しますか？'))return;

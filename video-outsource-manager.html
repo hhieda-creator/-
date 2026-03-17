@@ -612,9 +612,10 @@ tr:hover td { background: #fafbff; }
       <button class="btn btn-purple" onclick="generateReport()">🤖 AIレポート生成</button>
     </div>
   </div>
+  <div id="insight-project-banner" style="display:none;"></div>
+  <div id="insight-chart-wrap"></div>
   <div id="insights-output"></div>
   <div id="insight-history-wrap"></div>
-  <div id="insight-chart-wrap"></div>
 </div>
 
 <!-- アカウント管理 -->
@@ -1465,15 +1466,32 @@ function loadInsightProject(){
   currentInsightProjectId=id||null;
   document.getElementById('insights-output').innerHTML='';
   document.getElementById('insight-history-wrap').innerHTML='';
+  document.getElementById('insight-chart-wrap').innerHTML='';
   const card=document.getElementById('metrics-input-card');
+  const banner=document.getElementById('insight-project-banner');
   if(id){
     card.style.display='';
+    const proj=projects.find(p=>p.id===id);
+    if(proj && banner){
+      const statusMap={pending:'⬜ 未着手',editing:'🟡 編集中',done:'✅ 完了'};
+      banner.style.display='';
+      banner.innerHTML=`<div class="card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:16px 20px;">
+        <div style="font-size:11px;color:#a5b4fc;font-weight:700;margin-bottom:4px;">${proj.client||''} · ${proj.ym||''} · ${statusMap[proj.status||'pending']}</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:6px;">🎬 ${proj.title}</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#c7d2fe;">
+          ${proj.assignedEditor?`<span>👤 ${proj.assignedEditor}</span>`:''}
+          ${proj.postDate?`<span>📅 投稿日: ${proj.postDate}</span>`:''}
+          ${proj.accountName?`<span>📱 ${proj.accountName}</span>`:''}
+        </div>
+      </div>`;
+    }
     const labels={'48h':'投稿後 48時間の数値','1week':'投稿後 1週間の数値','1month':'投稿後 1ヶ月の数値'};
     document.getElementById('period-label').textContent=labels[currentPeriod]||'';
     switchPeriod(document.querySelector('.ttab.active')||document.querySelector('.ttab'),currentPeriod);
     renderInsightHistory(id);
   } else {
     card.style.display='none';
+    if(banner) banner.style.display='none';
   }
 }
 function switchPeriod(el,period){
@@ -1485,8 +1503,18 @@ function switchPeriod(el,period){
     const key=`${currentInsightProjectId}_${period}`;const rec=insightRecords[key];
     const mFields=['views','likes','comments','shares','saves','followers'];
     const mExtra={profile:'profileClicks',watchtime:'watchTime'};
-    if(rec){mFields.forEach(f=>{const el=document.getElementById(`m-${f}`);if(el)el.value=rec[f]||'';});Object.entries(mExtra).forEach(([id,key])=>{const el=document.getElementById(`m-${id}`);if(el)el.value=rec[key]||'';});}
-    else{mFields.forEach(f=>{const el=document.getElementById(`m-${f}`);if(el)el.value='';});Object.keys(mExtra).forEach(id=>{const el=document.getElementById(`m-${id}`);if(el)el.value='';});}
+    if(rec){
+      mFields.forEach(f=>{const el=document.getElementById(`m-${f}`);if(el)el.value=rec[f]||'';});
+      Object.entries(mExtra).forEach(([id,key])=>{const el=document.getElementById(`m-${id}`);if(el)el.value=rec[key]||'';});
+      // 新フィールド
+      const el_fw=document.getElementById('m-fullview'); if(el_fw)el_fw.value=rec.fullViewRate||'';
+      const el_hv=document.getElementById('m-halfview'); if(el_hv)el_hv.value=rec.halfViewRate||'';
+      const el_do=document.getElementById('m-dropout'); if(el_do)el_do.value=rec.dropoutTime||'';
+    } else {
+      mFields.forEach(f=>{const el=document.getElementById(`m-${f}`);if(el)el.value='';});
+      Object.keys(mExtra).forEach(id=>{const el=document.getElementById(`m-${id}`);if(el)el.value='';});
+      ['m-fullview','m-halfview','m-dropout'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    }
     renderInsights();
   }
 }

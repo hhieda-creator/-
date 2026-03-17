@@ -461,6 +461,11 @@ tr:hover td { background: #fafbff; }
       <div class="url-list" id="past-folders-list"></div>
       <button class="btn-sm" style="margin-top:8px;" onclick="addUrlRow('past-folders-list','')">＋ フォルダを追加</button>
     </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:#059669;margin-bottom:8px;">📦 素材フォルダ（撮影データ）</div>
+      <div class="url-list" id="material-folders-list"></div>
+      <button class="btn-sm" style="margin-top:8px;" onclick="addUrlRow('material-folders-list','')">＋ フォルダを追加</button>
+    </div>
     <div style="margin-bottom:4px;">
       <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;">編集動画の納品フォルダ（Drive）</div>
       <div class="url-list" id="output-folders-list"></div>
@@ -597,7 +602,9 @@ tr:hover td { background: #fafbff; }
       <div class="field"><label>保存数</label><input id="m-saves" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>フォロワー獲得数</label><input id="m-followers" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>プロフィールクリック</label><input id="m-profile" type="number" placeholder="0" oninput="renderInsights()"></div>
-      <div class="field"><label>視聴者離脱時間 (秒)</label><input id="m-watchtime" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
+      <div class="field"><label>平均視聴時間 (秒)</label><input id="m-watchtime" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
+      <div class="field"><label>50%視聴率 (%)</label><input id="m-halfview" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
+      <div class="field"><label>離脱が多い時間 (秒)</label><input id="m-dropout" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
     </div>
     <div class="actions">
       <button class="btn btn-primary" onclick="saveInsightRecord()">💾 この期間の数値を保存</button>
@@ -606,6 +613,7 @@ tr:hover td { background: #fafbff; }
   </div>
   <div id="insights-output"></div>
   <div id="insight-history-wrap"></div>
+  <div id="insight-chart-wrap"></div>
 </div>
 
 <!-- アカウント管理 -->
@@ -974,7 +982,7 @@ function goto(el, page) {
 
 // ── URL LISTS ──
 function initUrlLists() {
-  ['ref-videos-list','style-folders-list','past-folders-list','output-folders-list'].forEach(id=>{
+  ['ref-videos-list','style-folders-list','past-folders-list','material-folders-list','output-folders-list'].forEach(id=>{
     if(!document.getElementById(id).children.length) addUrlRow(id,'');
   });
 }
@@ -1108,7 +1116,7 @@ function updatePreview(){
   const font=v('f-font'); const telopStyle=v('f-telop-style'); const bgm=v('f-bgm'); const se=v('f-se');
   const platform=v('f-platform'); const format=v('f-format'); const remarks=v('f-remarks');
   const refVideos=getUrlList('ref-videos-list'); const styleFolders=getUrlList('style-folders-list');
-  const pastFolders=getUrlList('past-folders-list'); const outputFolders=getUrlList('output-folders-list');
+  const pastFolders=getUrlList('past-folders-list'); const materialFolders=getUrlList('material-folders-list'); const outputFolders=getUrlList('output-folders-list');
 
   const L=[]; const line=s=>L.push(s); const blank=()=>L.push('');
 
@@ -1123,6 +1131,7 @@ function updatePreview(){
   if(refVideos.length){ line('▼ 参考動画'); refVideos.forEach((u,i)=>line(`　${i+1}. ${u}`)); blank(); }
   if(styleFolders.length){ line('⭐ 編集スタイル参照フォルダ（こちらの動画に寄せてください）'); styleFolders.forEach((u,i)=>line(`　${i+1}. ${u}`)); blank(); }
   if(pastFolders.length){ line('⭐ 過去の動画ファイル参照フォルダ'); pastFolders.forEach((u,i)=>line(`　${i+1}. ${u}`)); blank(); }
+  if(materialFolders.length){ line('📦 素材フォルダ（撮影データ）'); materialFolders.forEach((u,i)=>line(`　${i+1}. ${u}`)); blank(); }
 
   line('─────────────────────────────────────');
   blank();
@@ -1213,7 +1222,7 @@ function saveProject(){
     id:Date.now(),title,type,client:document.getElementById('f-client').value,ym:document.getElementById('f-ym').value,
     castCount:cast.length,cast,
     refVideos:getUrlList('ref-videos-list'),styleFolders:getUrlList('style-folders-list'),
-    pastFolders:getUrlList('past-folders-list'),outputFolders:getUrlList('output-folders-list'),
+    pastFolders:getUrlList('past-folders-list'),materialFolders:getUrlList('material-folders-list'),outputFolders:getUrlList('output-folders-list'),
     assignedEditor:document.getElementById('f-editor').value,status:document.getElementById('f-status').value||'pending',
     videoCount:+document.getElementById('f-count')?.value||1,
     accountName:document.getElementById('f-account')?.value||'',
@@ -1245,7 +1254,7 @@ function saveProject(){
 
 function clearForm(){
   ['f-title','f-shop','f-edit-notes','f-special','f-intro-text','f-remarks','f-talent','f-product','f-materials','f-brand','f-duration','f-narration'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  setUrlList('ref-videos-list',[]);setUrlList('style-folders-list',[]);setUrlList('past-folders-list',[]);setUrlList('output-folders-list',[]);
+  setUrlList('ref-videos-list',[]);setUrlList('style-folders-list',[]);setUrlList('past-folders-list',[]);setUrlList('material-folders-list',[]);setUrlList('output-folders-list',[]);
   castCount=5;renderCastList();updatePreview();
 }
 
@@ -1278,7 +1287,7 @@ function renderFiling(){
     <td><span class="badge ${typeBadge[p.type]||'badge-gray'}">${typeLabels[p.type]||'—'}</span></td>
     <td>${p.assignedEditor||'<span style="color:#d1d5db;">—</span>'}</td>
     <td><span class="badge ${{'pending':'badge-gray','editing':'badge-orange','done':'badge-green'}[p.status||'pending']}" style="cursor:pointer;" onclick="cycleStatus(${p.id})">${{'pending':'⬜ 未着手','editing':'🟡 編集中','done':'✅ 完了'}[p.status||'pending']}</span></td>
-    <td>${(p.outputFolders&&p.outputFolders[0])?`<a class="tag-link" href="${p.outputFolders[0]}" target="_blank">📁 開く</a>`:'<span style="color:#d1d5db;">—</span>'}</td>
+    <td>${(p.outputFolders&&p.outputFolders.length)?p.outputFolders.map((u,i)=>`<a class="tag-link" href="${u}" target="_blank">📁${p.outputFolders.length>1?i+1:''}</a>`).join(' '):'<span style="color:#d1d5db;">—</span>'}</td>
     <td class="table-actions">
       <button class="btn-sm" onclick="loadProject(${p.id})">再編集</button>
       <button class="btn-sm" onclick="copyProjectText(${p.id})">コピー</button>
@@ -1305,7 +1314,7 @@ function loadProject(id){
   document.getElementById('f-remarks').value=p.remarks||'';
   ['talent','product','materials','brand','duration','narration'].forEach(k=>{const el=document.getElementById(`f-${k}`);if(el)el.value=p[k]||'';});
   setUrlList('ref-videos-list',p.refVideos||[]); setUrlList('style-folders-list',p.styleFolders||[]);
-  setUrlList('past-folders-list',p.pastFolders||[]); setUrlList('output-folders-list',p.outputFolders||[]);
+  setUrlList('past-folders-list',p.pastFolders||[]); setUrlList('material-folders-list',p.materialFolders||[]); setUrlList('output-folders-list',p.outputFolders||[]);
   onTypeChange();
   castCount=Math.max(p.cast?.length||0,1); renderCastList();
   if(p.cast)p.cast.forEach((c,i)=>{const ni=document.getElementById(`cast-name-${i+1}`);const di=document.getElementById(`cast-id-${i+1}`);if(ni)ni.value=c.name||'';if(di)di.value=c.handle||'';});
@@ -1501,7 +1510,7 @@ function removeVideo(){
   document.getElementById('insights-output').innerHTML='';
   toast('動画を削除しました');
 }
-function getMetricVals(){return{views:+document.getElementById('m-views').value||0,likes:+document.getElementById('m-likes').value||0,comments:+document.getElementById('m-comments').value||0,shares:+document.getElementById('m-shares').value||0,saves:+document.getElementById('m-saves').value||0,followers:+document.getElementById('m-followers').value||0,profileClicks:+document.getElementById('m-profile')?.value||0,watchTime:+document.getElementById('m-watchtime')?.value||0};}
+function getMetricVals(){return{views:+document.getElementById('m-views').value||0,likes:+document.getElementById('m-likes').value||0,comments:+document.getElementById('m-comments').value||0,shares:+document.getElementById('m-shares').value||0,saves:+document.getElementById('m-saves').value||0,followers:+document.getElementById('m-followers').value||0,profileClicks:+document.getElementById('m-profile')?.value||0,watchTime:+document.getElementById('m-watchtime')?.value||0,fullViewRate:+document.getElementById('m-fullview')?.value||0,halfViewRate:+document.getElementById('m-halfview')?.value||0,dropoutTime:+document.getElementById('m-dropout')?.value||0};}
 function renderInsights(){
   const vals=getMetricVals(); if(!vals.views)return;
   const er=((vals.likes+vals.comments+vals.shares)/vals.views*100).toFixed(2);
@@ -1554,6 +1563,9 @@ function renderInsightHistory(projId){
         <div class="irc-stat"><div class="sv">${er}%</div><div class="sk">ER</div></div>
         ${r.profileClicks?`<div class="irc-stat"><div class="sv">${fmt(r.profileClicks)}</div><div class="sk">プロフCL</div></div>`:''}
         ${r.watchTime?`<div class="irc-stat"><div class="sv">${r.watchTime}s</div><div class="sk">平均視聴</div></div>`:''}
+        ${r.fullViewRate?`<div class="irc-stat"><div class="sv">${r.fullViewRate}%</div><div class="sk">フル視聴</div></div>`:''}
+        ${r.halfViewRate?`<div class="irc-stat"><div class="sv">${r.halfViewRate}%</div><div class="sk">50%視聴</div></div>`:''}
+        ${r.dropoutTime?`<div class="irc-stat" style="color:#ef4444;"><div class="sv">${r.dropoutTime}s</div><div class="sk">離脱ピーク</div></div>`:''}
       </div>
       <button class="btn-sm danger" onclick="deleteInsightRecord(${projId},'${p}')">削除</button>
     </div>`;
@@ -1561,12 +1573,52 @@ function renderInsightHistory(projId){
   if(!hasAny)html+=`<div class="empty-state"><div class="big">📊</div>まだ記録がありません</div>`;
   html+=`</div>`;
   wrap.innerHTML=html;
+  renderInsightChart(projId);
 }
 function deleteInsightRecord(projId,period){
   if(!confirm('この記録を削除しますか？'))return;
   delete insightRecords[`${projId}_${period}`];
   localStorage.setItem('vop_insight_records',JSON.stringify(insightRecords));
   renderInsightHistory(projId);toast('削除しました');
+}
+
+function renderInsightChart(projId){
+  const wrap=document.getElementById('insight-chart-wrap');if(!wrap)return;
+  const periods=['48h','1week','1month'];
+  const pLabels={'48h':'48h','1week':'1週間','1month':'1ヶ月'};
+  const recs=periods.map(p=>({period:p,label:pLabels[p],r:insightRecords[`${projId}_${p}`]})).filter(x=>x.r);
+  if(!recs.length){wrap.innerHTML='';return;}
+  const maxV=Math.max(...recs.map(x=>x.r.views||0),1);
+  const maxW=Math.max(...recs.map(x=>x.r.watchTime||0),1);
+  const colors={'48h':'#e8305a','1week':'#6d28d9','1month':'#0891b2'};
+  const barsHtml=recs.map(x=>{
+    const r=x.r;
+    const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):0;
+    const viewH=Math.round((r.views||0)/maxV*100);
+    const watchH=maxW>0?Math.round((r.watchTime||0)/maxW*100):0;
+    return `<div style="flex:1;text-align:center;">
+      <div style="font-size:11px;font-weight:700;color:${colors[x.period]};margin-bottom:6px;">${x.label}</div>
+      <div style="display:flex;gap:4px;align-items:flex-end;justify-content:center;height:100px;">
+        <div style="width:28px;background:${colors[x.period]};height:${viewH}px;border-radius:4px 4px 0 0;" title="再生${fmt(r.views||0)}"></div>
+        <div style="width:28px;background:#10b981;height:${watchH}px;border-radius:4px 4px 0 0;" title="平均視聴${r.watchTime||0}s"></div>
+      </div>
+      <div style="font-size:10px;color:#6b7280;margin-top:4px;">${fmt(r.views||0)}再生</div>
+      <div style="font-size:10px;color:#6d28d9;">${er}% ER</div>
+      ${r.watchTime?`<div style="font-size:10px;color:#10b981;">⏱${r.watchTime}s</div>`:''}
+      ${r.fullViewRate?`<div style="font-size:10px;color:#059669;">フル${r.fullViewRate}%</div>`:''}
+      ${r.dropoutTime?`<div style="font-size:10px;color:#ef4444;">離脱${r.dropoutTime}s</div>`:''}
+    </div>`;
+  }).join('');
+  wrap.innerHTML=`<div class="card">
+    <div class="sec">📊 パフォーマンス比較グラフ <span style="font-size:11px;font-weight:400;color:#9ca3af;">（紫=再生数 緑=平均視聴時間）</span></div>
+    <div style="display:flex;gap:16px;padding:8px 0;">${barsHtml}</div>
+    <div style="display:flex;gap:12px;font-size:11px;margin-top:8px;">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#e8305a;"></span> 48h</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#6d28d9;"></span> 1週間</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#0891b2;"></span> 1ヶ月</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10b981;"></span> 平均視聴</span>
+    </div>
+  </div>`;
 }
 
 async function generateReport(){
@@ -1583,7 +1635,7 @@ async function generateReport(){
   const prompt=`あなたはSNS動画マーケティングの専門家です。以下のデータを分析して日本語でパフォーマンスレポートを作成してください。
 案件名: ${proj?.title||'不明'} / 期間: ${periodLabel}
 業種: ${typeLabels[proj?.type]||'不明'}
-再生数:${vals.views} いいね:${vals.likes} コメント:${vals.comments} シェア:${vals.shares} 保存:${vals.saves} フォロワー獲得:${vals.followers} プロフクリック:${vals.profileClicks||0} 平均視聴時間:${vals.watchTime||0}秒
+再生数:${vals.views} いいね:${vals.likes} コメント:${vals.comments} シェア:${vals.shares} 保存:${vals.saves} フォロワー獲得:${vals.followers} プロフクリック:${vals.profileClicks||0} 平均視聴時間:${vals.watchTime||0}秒 フル視聴率:${vals.fullViewRate||0}% 50%視聴率:${vals.halfViewRate||0}% 離脱ピーク:${vals.dropoutTime||0}秒
 ER:${er}% 保存率:${saveR}%
 以下3点を各3〜4文で（箇条書き不要）:1.パフォーマンス総評 2.良かった点・改善すべき点 3.次回への具体的な改善提案`;
   try{
@@ -1650,7 +1702,7 @@ async function handleInsightScreenshot(file){
     const text = await callVisionAI(base64, file.type, prompt);
     const clean = text.replace(/```json|```/g,'').trim();
     const json = JSON.parse(clean);
-    const fields={views:'m-views',likes:'m-likes',comments:'m-comments',shares:'m-shares',saves:'m-saves',followers:'m-followers',profileClicks:'m-profile',watchTime:'m-watchtime'};
+    const fields={views:'m-views',likes:'m-likes',comments:'m-comments',shares:'m-shares',saves:'m-saves',followers:'m-followers',profileClicks:'m-profile',watchTime:'m-watchtime',fullViewRate:'m-fullview',halfViewRate:'m-halfview',dropoutTime:'m-dropout'};
     let filled=[];
     Object.entries(fields).forEach(([key,id])=>{
       const el=document.getElementById(id);
@@ -1807,7 +1859,7 @@ function renderAccountStats(name){
       const r=insightRecords[`${p.id}_${period}`];
       if(!r)return `<td style="color:#d1d5db;font-size:12px;" colspan="1">—</td>`;
       const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):'—';
-      return `<td><div style="font-size:11px;"><div><strong>${fmt(r.views||0)}</strong> <span style="color:#9ca3af;font-size:10px;">再生</span></div><div style="color:#6d28d9;">${er}% ER</div><div style="color:#6b7280;font-size:10px;">保存${fmt(r.saves||0)}</div></div></td>`;
+      return `<td><div style="font-size:11px;line-height:1.6;"><div><strong>${fmt(r.views||0)}</strong> <span style="color:#9ca3af;font-size:10px;">再生</span></div><div style="color:#6d28d9;">${er}% ER</div><div style="color:#6b7280;font-size:10px;">保存${fmt(r.saves||0)}</div>${r.watchTime?`<div style="color:#0891b2;font-size:10px;">⏱${r.watchTime}s</div>`:''} ${r.fullViewRate?`<div style="color:#059669;font-size:10px;">フル${r.fullViewRate}%</div>`:''} ${r.dropoutTime?`<div style="color:#ef4444;font-size:10px;">離脱${r.dropoutTime}s</div>`:''}</div></td>`;
     }).join('');
     return `<tr>
       <td><span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.postDate||'—'}</span></td>

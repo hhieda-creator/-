@@ -603,7 +603,8 @@ tr:hover td { background: #fafbff; }
       <div class="field"><label>フォロワー獲得数</label><input id="m-followers" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>プロフィールクリック</label><input id="m-profile" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>平均視聴時間 (秒)</label><input id="m-watchtime" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
-      <div class="field"><label>50%視聴率 (%)</label><input id="m-halfview" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
+      <div class="field"><label>フル視聴率 (%)</label><input id="m-fullview" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
+      <div class="field"><label>50%視聴地点 (秒)</label><input id="m-halfview" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
       <div class="field"><label>離脱が多い時間 (秒)</label><input id="m-dropout" type="number" placeholder="0" step="0.1" oninput="renderInsights()"></div>
     </div>
     <div class="actions">
@@ -1530,6 +1531,27 @@ function renderInsights(){
       <div class="metric-bar"><span class="ml">保存</span><div class="mtrack"><div class="mfill" style="width:${Math.min(+saveRate*5,100)}%"></div></div><span class="mv">${fmt(vals.saves)}</span></div>
     </div>`;
 }
+function setMetricVals(vals){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  set('m-views',vals.views);set('m-likes',vals.likes);set('m-comments',vals.comments);
+  set('m-shares',vals.shares);set('m-saves',vals.saves);set('m-followers',vals.followers);
+  set('m-profile',vals.profileClicks);set('m-watchtime',vals.watchTime);
+  set('m-fullview',vals.fullViewRate);set('m-halfview',vals.halfViewRate);set('m-dropout',vals.dropoutTime);
+  renderInsights();
+}
+function editInsightRecord(projId, period){
+  const key=`${projId}_${period}`;
+  const r=insightRecords[key];if(!r)return;
+  // 期間を切り替え
+  currentInsightProjectId=projId;
+  currentPeriod=period;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.period===period));
+  setMetricVals(r);
+  // 入力エリアにスクロール
+  document.getElementById('insight-ss-status').textContent=`✏️ ${{'48h':'48時間後','1week':'1週間後','1month':'1ヶ月後'}[period]} のデータを編集中`;
+  document.querySelector('.page.active .card')?.scrollIntoView({behavior:'smooth'});
+  toast('数値を読み込みました。編集して「保存」してください');
+}
 function saveInsightRecord(){
   if(!currentInsightProjectId){alert('案件を選択してください');return;}
   const vals=getMetricVals();
@@ -1564,10 +1586,13 @@ function renderInsightHistory(projId){
         ${r.profileClicks?`<div class="irc-stat"><div class="sv">${fmt(r.profileClicks)}</div><div class="sk">プロフCL</div></div>`:''}
         ${r.watchTime?`<div class="irc-stat"><div class="sv">${r.watchTime}s</div><div class="sk">平均視聴</div></div>`:''}
         ${r.fullViewRate?`<div class="irc-stat"><div class="sv">${r.fullViewRate}%</div><div class="sk">フル視聴</div></div>`:''}
-        ${r.halfViewRate?`<div class="irc-stat"><div class="sv">${r.halfViewRate}%</div><div class="sk">50%視聴</div></div>`:''}
+        ${r.halfViewRate?`<div class="irc-stat"><div class="sv">${r.halfViewRate}s</div><div class="sk">50%地点</div></div>`:''}
         ${r.dropoutTime?`<div class="irc-stat" style="color:#ef4444;"><div class="sv">${r.dropoutTime}s</div><div class="sk">離脱ピーク</div></div>`:''}
       </div>
-      <button class="btn-sm danger" onclick="deleteInsightRecord(${projId},'${p}')">削除</button>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn-sm" onclick="editInsightRecord(${projId},'${p}')">✏️ 編集</button>
+        <button class="btn-sm danger" onclick="deleteInsightRecord(${projId},'${p}')">削除</button>
+      </div>
     </div>`;
   });
   if(!hasAny)html+=`<div class="empty-state"><div class="big">📊</div>まだ記録がありません</div>`;

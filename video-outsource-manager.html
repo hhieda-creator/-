@@ -698,6 +698,7 @@ tr:hover td { background: #fafbff; }
       <div class="form-grid">
         <div class="field"><label>投稿日 *</label><input id="ap-date" type="date"></div>
         <div class="field"><label>動画タイトル *</label><input id="ap-title" type="text" placeholder="例: キャバクラ楽しみ方"></div>
+        <div class="field"><label>投稿種別</label><select id="ap-type" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;"><option value="organic">🌱 オーガニック</option><option value="ad">📣 広告あり</option><option value="organic_ad">🌱📣 オーガニック→広告</option></select></div>
         <div class="field" style="grid-column:1/-1;"><label>ハッシュタグ</label><input id="ap-hashtags" type="text" placeholder="例: #キャバクラ #中洲 #福岡"></div>
         <div class="field" style="grid-column:1/-1;"><label>案件と紐づける（任意）</label>
           <select id="ap-project" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;">
@@ -2065,8 +2066,9 @@ function renderAccDetail(key, tab){
       }).join('');
     };
 
+    const ptBadge={organic:'<span style="font-size:10px;background:#dcfce7;color:#059669;padding:1px 6px;border-radius:4px;margin-top:3px;display:inline-block;">🌱 オーガニック</span>',ad:'<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:4px;margin-top:3px;display:inline-block;">📣 広告</span>',organic_ad:'<span style="font-size:10px;background:#fef3c7;color:#d97706;padding:1px 6px;border-radius:4px;margin-top:3px;display:inline-block;">🌱📣 広告あり</span>'};
     const postRows=accPosts.map(p=>`<tr>
-      <td style="font-size:11px;color:#6b7280;white-space:nowrap;">${p.postDate||'—'}<div style="font-size:10px;background:#dcfce7;color:#059669;display:inline-block;padding:1px 5px;border-radius:4px;margin-top:2px;">独立</div></td>
+      <td style="font-size:11px;color:#6b7280;white-space:nowrap;">${p.postDate||'—'}<br>${ptBadge[p.postType||'organic']||ptBadge.organic}</td>
       <td><div style="font-weight:700;font-size:13px;">${p.title}</div>
         <div style="display:flex;gap:4px;margin-top:4px;">
           <button class="btn-sm" onclick="openPostInsight('post_${p.id}','${p.title.replace(/'/g,"\'")}')">📊 入力</button>
@@ -2179,10 +2181,11 @@ function saveNewPost(){
   const title=document.getElementById('ap-title').value.trim();
   const postDate=document.getElementById('ap-date').value;
   const hashtags=document.getElementById('ap-hashtags').value.trim();
+  const postType=document.getElementById('ap-type')?.value||'organic';
   const projectId=document.getElementById('ap-project').value;
   if(!title){alert('タイトルを入力してください');return;}
   const id=Date.now();
-  posts.push({id,accountKey:accKey,title,postDate,hashtags,projectId:projectId||null,createdAt:new Date().toISOString()});
+  posts.push({id,accountKey:accKey,title,postDate,hashtags,postType,projectId:projectId||null,createdAt:new Date().toISOString()});
   localStorage.setItem('vop_posts',JSON.stringify(posts));
   gasSave();
   document.getElementById('add-post-modal').style.display='none';

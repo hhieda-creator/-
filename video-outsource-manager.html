@@ -689,6 +689,59 @@ tr:hover td { background: #fafbff; }
   </div>
 
   <div id="account-stats-output" style="display:none;"></div>
+
+  <!-- 投稿追加モーダル -->
+  <div id="add-post-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;">
+    <div style="background:#fff;border-radius:16px;max-width:480px;margin:80px auto;padding:24px;">
+      <div style="font-size:16px;font-weight:800;margin-bottom:16px;">🎬 投稿を追加</div>
+      <div class="form-grid">
+        <div class="field"><label>投稿日 *</label><input id="ap-date" type="date"></div>
+        <div class="field"><label>動画タイトル *</label><input id="ap-title" type="text" placeholder="例: キャバクラ楽しみ方"></div>
+        <div class="field" style="grid-column:1/-1;"><label>ハッシュタグ</label><input id="ap-hashtags" type="text" placeholder="例: #キャバクラ #中洲 #福岡"></div>
+        <div class="field" style="grid-column:1/-1;"><label>案件と紐づける（任意）</label>
+          <select id="ap-project" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;">
+            <option value="">紐づけない（独立登録）</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn btn-secondary" onclick="document.getElementById('add-post-modal').style.display='none'">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveNewPost()">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 投稿インサイット入力モーダル -->
+  <div id="pi-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;overflow-y:auto;">
+    <div style="background:#fff;border-radius:16px;max-width:600px;margin:40px auto;padding:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:15px;font-weight:800;color:#111827;">📊 <span id="pi-title"></span></div>
+        <button onclick="closePostInsightModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button class="pi-tab ttab active" data-period="48h" onclick="switchPostPeriod('48h')">48時間</button>
+        <button class="pi-tab ttab" data-period="1week" onclick="switchPostPeriod('1week')">1週間</button>
+        <button class="pi-tab ttab" data-period="1month" onclick="switchPostPeriod('1month')">1ヶ月</button>
+      </div>
+      <div class="form-grid col3">
+        <div class="field"><label>再生数</label><input id="pi-views" type="number" placeholder="0"></div>
+        <div class="field"><label>いいね数</label><input id="pi-likes" type="number" placeholder="0"></div>
+        <div class="field"><label>コメント数</label><input id="pi-comments" type="number" placeholder="0"></div>
+        <div class="field"><label>シェア数</label><input id="pi-shares" type="number" placeholder="0"></div>
+        <div class="field"><label>保存数</label><input id="pi-saves" type="number" placeholder="0"></div>
+        <div class="field"><label>フォロワー獲得</label><input id="pi-followers" type="number" placeholder="0"></div>
+        <div class="field"><label>プロフクリック</label><input id="pi-profile" type="number" placeholder="0"></div>
+        <div class="field"><label>平均視聴時間(秒)</label><input id="pi-watchtime" type="number" placeholder="0" step="0.1"></div>
+        <div class="field"><label>フル視聴率(%)</label><input id="pi-fullview" type="number" placeholder="0" step="0.1"></div>
+        <div class="field"><label>50%視聴地点(秒)</label><input id="pi-halfview" type="number" placeholder="0" step="0.1"></div>
+        <div class="field"><label>離脱が多い時間(秒)</label><input id="pi-dropout" type="number" placeholder="0" step="0.1"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn btn-secondary" onclick="closePostInsightModal()">閉じる</button>
+        <button class="btn btn-primary" onclick="savePostInsight()">💾 保存</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- キャストマスタ -->
@@ -843,6 +896,7 @@ let clients        = JSON.parse(localStorage.getItem('vop_clients')         || '
 let accounts       = JSON.parse(localStorage.getItem('vop_accounts')        || '{}');
 let insightRecords = JSON.parse(localStorage.getItem('vop_insight_records') || '{}');
 let accountMeta    = JSON.parse(localStorage.getItem('vop_account_meta')        || '{}');
+let posts          = JSON.parse(localStorage.getItem('vop_posts')               || '[]');
 let isSyncing      = false;
 
 // ── GAS DB SYNC ──
@@ -862,6 +916,7 @@ async function gasLoad() {
     if (d.editors      && d.editors.length > editors.length)         { editors        = d.editors;        localStorage.setItem('vop_editors',         JSON.stringify(editors)); }
     if (d.editorOrders && d.editorOrders.length > editorOrders.length){ editorOrders  = d.editorOrders;   localStorage.setItem('vop_editor_orders',   JSON.stringify(editorOrders)); }
     if (d.casts        && d.casts.length > castMaster.length)        { castMaster     = d.casts;          localStorage.setItem('vop_casts',           JSON.stringify(castMaster)); }
+    if (d.posts        && d.posts.length > posts.length)               { posts          = d.posts;          localStorage.setItem('vop_posts',           JSON.stringify(posts)); }
     refreshAllViews();
     toast('☁️ データを同期しました');
   } catch(e) {
@@ -873,7 +928,7 @@ async function gasSave() {
   if (!GAS_URL || isSyncing) return;
   isSyncing = true;
   try {
-    const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster, accountMeta };
+    const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster, accountMeta, posts };
     // iframe trick: GASへno-cors GETで送信（CORS完全回避）
     // データをチャンク分割してキーごとに送信
     const keys = Object.keys(data);
@@ -1920,21 +1975,270 @@ function renderAccountList(){
 }
 
 let currentAccKey = '';
+let currentAccTab = 'stats'; // 'stats' | 'posts' | 'record'
+
 function openAccRecord(key){
   currentAccKey=key;
   const m=accountMeta[key]||{};
-  const modal=document.getElementById('acc-record-modal');
-  document.getElementById('acc-modal-title').innerHTML=`<span style="font-size:18px;">${{tiktok:'🎵',instagram:'📸',youtube:'▶️',twitter:'🐦'}[m.sns]||'📱'}</span> ${m.name} <span style="font-size:12px;color:#9ca3af;font-weight:400;">${m.client||''}</span>`;
-  document.getElementById('acc-date').value=new Date().toISOString().slice(0,10);
-  ['acc-followers','acc-views','acc-profile','acc-likes','acc-memo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  modal.style.display='block';
-  // stats表示
+  currentSNSTab=(m.sns||'tiktok');
   const out=document.getElementById('account-stats-output');
   out.style.display='block';
-  currentSNSTab=(m.sns||'tiktok');
-  renderAccountStats(m.name);
+  // スクロール
+  out.scrollIntoView({behavior:'smooth',block:'start'});
+  renderAccDetail(key, currentAccTab);
 }
+
+function renderAccDetail(key, tab){
+  currentAccTab=tab;
+  const m=accountMeta[key]||{};
+  const snsIcon={tiktok:'🎵',instagram:'📸',youtube:'▶️',twitter:'🐦'};
+  const snsLabel={tiktok:'TikTok',instagram:'Instagram',youtube:'YouTube',twitter:'X'};
+  const out=document.getElementById('account-stats-output');
+
+  const tabBar=`<div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px;">
+    ${['stats','posts','record'].map(t=>{
+      const labels={stats:'📊 フォロワー推移',posts:'🎬 投稿一覧',record:'✏️ 数値を記録'};
+      return `<div onclick="renderAccDetail('${key}','${t}')" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:${t===tab?'2px solid #6d28d9':'2px solid transparent'};color:${t===tab?'#6d28d9':'#6b7280'};margin-bottom:-2px;">${labels[t]}</div>`;
+    }).join('')}
+    <div style="flex:1;"></div>
+    <button onclick="showEditAccountModal('${key}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#9ca3af;padding:8px 12px;">⚙️ 編集</button>
+    <button onclick="closeAccDetail()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#9ca3af;padding:8px 12px;">✕</button>
+  </div>`;
+
+  const header=`<div class="card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:16px 20px;margin-bottom:0;border-radius:12px 12px 0 0;">
+    <div style="font-size:11px;color:#a5b4fc;font-weight:700;">${m.client||'未設定'} · ${snsLabel[m.sns]||m.sns}</div>
+    <div style="font-size:20px;font-weight:800;margin:4px 0;">${snsIcon[m.sns]||'📱'} ${m.name}</div>
+    ${m.memo?`<div style="font-size:12px;color:#c7d2fe;">${m.memo}</div>`:''}
+  </div>`;
+
+  let body='';
+  if(tab==='stats'){
+    // フォロワー推移
+    const tmp=document.createElement('div');
+    out.innerHTML=header+`<div class="card" style="border-radius:0 0 12px 12px;margin-top:0;">${tabBar}<div id="acc-stats-body"></div></div>`;
+    document.getElementById('acc-stats-body').innerHTML='読み込み中...';
+    renderAccountStats(m.name);
+    return;
+  } else if(tab==='posts'){
+    // 投稿一覧：独立投稿 + 紐づき案件
+    const accPosts = posts.filter(p=>p.accountKey===key).sort((a,b)=>(b.postDate||'').localeCompare(a.postDate||''));
+    const linkedProj = projects.filter(p=>p.accountName===m.name||p.client===m.client).sort((a,b)=>(b.postDate||b.ym||'').localeCompare(a.postDate||a.ym||''));
+
+    // 比較グラフ用データ（独立投稿 + 案件）
+    const allItems=[
+      ...accPosts.map(p=>({id:`post_${p.id}`,title:p.title,postDate:p.postDate,type:'post'})),
+      ...linkedProj.map(p=>({id:p.id,title:p.title,postDate:p.postDate||p.ym,type:'project'}))
+    ];
+    const videoData=allItems.map(item=>{
+      const r=insightRecords[`${item.id}_1week`]||insightRecords[`${item.id}_48h`]||insightRecords[`${item.id}_1month`];
+      return{...item,r};
+    }).filter(x=>x.r);
+    const maxV=Math.max(...videoData.map(x=>x.r.views||0),1);
+    const colors=['#6d28d9','#e8305a','#0891b2','#059669','#d97706','#7c3aed','#db2777'];
+    const chartBars=videoData.map((x,i)=>{
+      const h=Math.round((x.r.views||0)/maxV*100);
+      const er=x.r.views?((x.r.likes+x.r.comments+x.r.shares)/x.r.views*100).toFixed(1):0;
+      return `<div style="flex:1;min-width:60px;max-width:110px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:${colors[i%colors.length]};">${fmt(x.r.views||0)}</div>
+        <div style="background:${colors[i%colors.length]};height:${h}px;border-radius:4px 4px 0 0;margin:2px 4px 0;"></div>
+        <div style="font-size:9px;color:#6b7280;margin-top:3px;">${x.title.length>10?x.title.slice(0,10)+'…':x.title}</div>
+        <div style="font-size:9px;color:#6d28d9;">${er}%ER</div>
+      </div>`;
+    }).join('');
+    const chart=videoData.length?`<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;">📊 再生数比較</div><div style="display:flex;gap:4px;align-items:flex-end;padding:8px 0;overflow-x:auto;min-height:80px;">${chartBars}</div></div>`:'';
+
+    // テーブル行生成
+    const mkCells=(itemId)=>{
+      return ['48h','1week','1month'].map(period=>{
+        const r=insightRecords[`${itemId}_${period}`];
+        if(!r)return `<td style="color:#d1d5db;text-align:center;font-size:12px;">—</td>`;
+        const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):0;
+        return `<td style="font-size:11px;line-height:1.7;text-align:center;">
+          <div><strong>${fmt(r.views||0)}</strong></div>
+          <div style="color:#6d28d9;">${er}%ER</div>
+          <div style="color:#6b7280;font-size:10px;">保存${fmt(r.saves||0)}</div>
+          ${r.watchTime?`<div style="color:#0891b2;font-size:10px;">⏱${r.watchTime}s</div>`:''}
+          ${r.fullViewRate?`<div style="color:#059669;font-size:10px;">フル${r.fullViewRate}%</div>`:''}
+          ${r.dropoutTime?`<div style="color:#ef4444;font-size:10px;">離脱${r.dropoutTime}s</div>`:''}
+        </td>`;
+      }).join('');
+    };
+
+    const postRows=accPosts.map(p=>`<tr>
+      <td style="font-size:11px;color:#6b7280;white-space:nowrap;">${p.postDate||'—'}<div style="font-size:10px;background:#dcfce7;color:#059669;display:inline-block;padding:1px 5px;border-radius:4px;margin-top:2px;">独立</div></td>
+      <td><div style="font-weight:700;font-size:13px;">${p.title}</div>
+        <div style="display:flex;gap:4px;margin-top:4px;">
+          <button class="btn-sm" onclick="openPostInsight('post_${p.id}','${p.title.replace(/'/g,"\'")}')">📊 入力</button>
+          <button class="btn-sm danger" onclick="deletePost('${p.id}','${key}')">削除</button>
+        </div>
+      </td>
+      ${mkCells('post_'+p.id)}
+    </tr>`).join('');
+
+    const projRows=linkedProj.map(p=>`<tr>
+      <td style="font-size:11px;color:#6b7280;white-space:nowrap;">${p.postDate||p.ym||'—'}<div style="font-size:10px;background:#ede9fe;color:#6d28d9;display:inline-block;padding:1px 5px;border-radius:4px;margin-top:2px;">案件</div></td>
+      <td><div style="font-weight:700;font-size:13px;">${p.title}</div>
+        <div style="display:flex;gap:4px;margin-top:4px;">
+          <button class="btn-sm" onclick="gotoInsight(${p.id})">📊 入力</button>
+        </div>
+      </td>
+      ${mkCells(p.id)}
+    </tr>`).join('');
+
+    const hasAny=accPosts.length||linkedProj.length;
+    body=`
+      <div style="margin-bottom:12px;">
+        <button class="btn btn-primary" onclick="showAddPostModal('${key}')">＋ 投稿を追加</button>
+      </div>
+      ${chart}
+      ${hasAny?`<div style="overflow-x:auto;"><table>
+        <thead><tr><th>投稿日</th><th>タイトル</th><th>48h</th><th>1週間</th><th>1ヶ月</th></tr></thead>
+        <tbody>${postRows}${projRows}</tbody>
+      </table></div>`:`<div class="empty-state"><div class="big">🎬</div>投稿がまだありません<br><span style="font-size:12px;color:#9ca3af;">「＋ 投稿を追加」から登録してください</span></div>`}
+    `;
+  } else if(tab==='record'){
+    body=`<div id="acc-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:16px;"></div>
+      <div id="acc-ss-drop" style="border:2px dashed #d1d5db;border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;cursor:pointer;background:#fafbfc;"
+        onclick="document.getElementById('acc-ss-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
+        ondragleave="this.style.borderColor='#d1d5db'"
+        ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleAccScreenshot(event.dataTransfer.files[0])">
+        <div style="font-size:20px;">📸</div>
+        <div style="font-size:13px;font-weight:600;color:#374151;">スクショをドロップ or クリックでAI読み取り</div>
+        <input type="file" id="acc-ss-input" accept="image/*" style="display:none" onchange="handleAccScreenshot(this.files[0])">
+      </div>
+      <div class="form-grid col3">
+        <div class="field"><label>記録日</label><input id="acc-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field"><label>フォロワー数</label><input id="acc-followers" type="number" placeholder="0"></div>
+        <div class="field"><label>総再生数</label><input id="acc-views" type="number" placeholder="0"></div>
+        <div class="field"><label>プロフィール訪問</label><input id="acc-profile" type="number" placeholder="0"></div>
+        <div class="field"><label>いいね合計</label><input id="acc-likes" type="number" placeholder="0"></div>
+        <div class="field"><label>メモ</label><input id="acc-memo" type="text" placeholder="例: 投稿3本"></div>
+      </div>
+      <div style="margin-top:12px;"><button class="btn btn-primary" onclick="saveAccountRecord()">💾 記録する</button></div>`;
+  }
+
+  out.innerHTML=header+`<div class="card" style="border-radius:0 0 12px 12px;margin-top:0;">${tabBar}${body}</div>`;
+}
+
+function closeAccDetail(){
+  document.getElementById('account-stats-output').style.display='none';
+  document.getElementById('account-stats-output').innerHTML='';
+}
+
+function gotoInsight(projId){
+  // 動画インサイトページに遷移して案件を選択
+  const navEl=document.querySelector('.nav-item[onclick*="insights"]');
+  goto(navEl||document.createElement('div'),'insights');
+  setTimeout(()=>{
+    const sel=document.getElementById('ins-project');
+    if(sel){sel.value=projId;loadInsightProject();}
+  },100);
+}
+
+function showEditAccountModal(key){
+  const m=accountMeta[key]||{};
+  const newName=prompt('アカウント名を変更:',m.name);
+  if(newName===null)return;
+  const newMemo=prompt('メモを変更:',m.memo||'');
+  if(newMemo===null)return;
+  const newClient=prompt('クライアント名を変更:',m.client||'');
+  if(newClient===null)return;
+  accountMeta[key]={...m,name:newName.trim()||m.name,memo:newMemo,client:newClient.trim()||m.client};
+  localStorage.setItem('vop_account_meta',JSON.stringify(accountMeta));
+  renderAccountList();
+  renderAccDetail(key,currentAccTab);
+  toast('更新しました');
+}
+
 function closeAccModal(){document.getElementById('acc-record-modal').style.display='none';}
+
+// ── 独立投稿管理 ──
+let currentPostInsightId = null;
+
+function showAddPostModal(accKey){
+  const modal=document.getElementById('add-post-modal');
+  if(!modal)return;
+  // 案件セレクトを更新（このアカウントに紐づく案件）
+  const m=accountMeta[accKey]||{};
+  const sel=document.getElementById('ap-project');
+  sel.innerHTML='<option value="">紐づけない（独立登録）</option>';
+  projects.filter(p=>p.accountName===m.name||p.client===m.client).forEach(p=>{
+    const o=document.createElement('option');o.value=p.id;o.textContent=`${p.ym||''} ${p.title}`;sel.appendChild(o);
+  });
+  document.getElementById('ap-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('ap-title').value='';
+  document.getElementById('ap-hashtags').value='';
+  document.getElementById('add-post-modal').dataset.accKey=accKey;
+  modal.style.display='block';
+}
+
+function saveNewPost(){
+  const accKey=document.getElementById('add-post-modal').dataset.accKey;
+  const title=document.getElementById('ap-title').value.trim();
+  const postDate=document.getElementById('ap-date').value;
+  const hashtags=document.getElementById('ap-hashtags').value.trim();
+  const projectId=document.getElementById('ap-project').value;
+  if(!title){alert('タイトルを入力してください');return;}
+  const id=Date.now();
+  posts.push({id,accountKey:accKey,title,postDate,hashtags,projectId:projectId||null,createdAt:new Date().toISOString()});
+  localStorage.setItem('vop_posts',JSON.stringify(posts));
+  gasSave();
+  document.getElementById('add-post-modal').style.display='none';
+  renderAccDetail(accKey,'posts');
+  toast('投稿を追加しました');
+}
+
+function deletePost(postId, accKey){
+  if(!confirm('この投稿を削除しますか？'))return;
+  posts=posts.filter(p=>String(p.id)!==String(postId));
+  // インサイットも削除
+  delete insightRecords[`post_${postId}_48h`];
+  delete insightRecords[`post_${postId}_1week`];
+  delete insightRecords[`post_${postId}_1month`];
+  localStorage.setItem('vop_posts',JSON.stringify(posts));
+  localStorage.setItem('vop_insight_records',JSON.stringify(insightRecords));
+  gasSave();
+  renderAccDetail(currentAccKey,'posts');
+  toast('削除しました');
+}
+
+function openPostInsight(itemId, title){
+  // インサイット入力モーダルを表示
+  currentPostInsightId=itemId;
+  const modal=document.getElementById('post-insight-modal');
+  if(!modal)return;
+  document.getElementById('pi-title').textContent=title;
+  document.getElementById('pi-modal').style.display='block';
+  // 既存データ読み込み（現在の期間）
+  loadPostInsightData(itemId, currentPostPeriod);
+}
+
+let currentPostPeriod='48h';
+function switchPostPeriod(period){
+  currentPostPeriod=period;
+  document.querySelectorAll('.pi-tab').forEach(t=>t.classList.toggle('active',t.dataset.period===period));
+  loadPostInsightData(currentPostInsightId, period);
+}
+function loadPostInsightData(itemId, period){
+  const r=insightRecords[`${itemId}_${period}`]||{};
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  set('pi-views',r.views);set('pi-likes',r.likes);set('pi-comments',r.comments);
+  set('pi-shares',r.shares);set('pi-saves',r.saves);set('pi-followers',r.followers);
+  set('pi-profile',r.profileClicks);set('pi-watchtime',r.watchTime);
+  set('pi-fullview',r.fullViewRate);set('pi-halfview',r.halfViewRate);set('pi-dropout',r.dropoutTime);
+}
+function savePostInsight(){
+  const itemId=currentPostInsightId;if(!itemId)return;
+  const get=(id)=>+document.getElementById(id)?.value||0;
+  const vals={views:get('pi-views'),likes:get('pi-likes'),comments:get('pi-comments'),shares:get('pi-shares'),saves:get('pi-saves'),followers:get('pi-followers'),profileClicks:get('pi-profile'),watchTime:get('pi-watchtime'),fullViewRate:get('pi-fullview'),halfViewRate:get('pi-halfview'),dropoutTime:get('pi-dropout'),savedAt:new Date().toISOString()};
+  insightRecords[`${itemId}_${currentPostPeriod}`]=vals;
+  localStorage.setItem('vop_insight_records',JSON.stringify(insightRecords));
+  gasSave();
+  toast(`${currentPostPeriod} のデータを保存しました`);
+  renderAccDetail(currentAccKey,'posts');
+}
+function closePostInsightModal(){document.getElementById('pi-modal').style.display='none';}
 
 function showAddAccountModal(){
   const sel=document.getElementById('acc-new-client');
@@ -1987,9 +2291,8 @@ function saveAccountRecord(){
   if(idx>=0)accounts[key][idx]=rec;else accounts[key].push(rec);
   accounts[key].sort((a,b)=>a.date>b.date?1:-1);
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
-  closeAccModal();
   renderAccountList();
-  renderAccountStats(name);
+  renderAccDetail(currentAccKey,'stats');
   toast('記録しました ✓');
   gasSave();
 }
@@ -2130,9 +2433,13 @@ function renderAccountStats(name){
       <tbody>${accRows}</tbody></table>
     </div>`:'';
 
-  out.innerHTML=`
-    <div style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:10px;">${snsLabel} · ${name}</div>
-    ${statsHtml}${chartHtml}${compareChartHtml}${videoTableHtml}${accTableHtml}`;
+  const statsBody=document.getElementById('acc-stats-body');
+  const statsContent=`${statsHtml}${chartHtml}${compareChartHtml}${videoTableHtml}${accTableHtml}`;
+  if(statsBody){
+    statsBody.innerHTML=statsContent;
+  } else {
+    out.innerHTML=`<div style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:10px;">${snsLabel} · ${name}</div>${statsContent}`;
+  }
 }
 function deleteAccountRecord(name,date){
   if(!confirm('削除しますか？'))return;

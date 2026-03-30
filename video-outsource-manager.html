@@ -666,9 +666,10 @@ tr:hover td { background: #fafbff; }
       <div style="font-size:16px;font-weight:800;margin-bottom:16px;">＋ アカウントを追加</div>
       <div class="form-grid">
         <div class="field"><label>クライアント名</label>
-          <select id="acc-new-client" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;">
+          <select id="acc-new-client" onchange="onAccClientChange()" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;">
             <option value="">-- 選択 --</option>
           </select>
+          <input id="acc-new-client-text" type="text" placeholder="新しいクライアント名を入力" style="display:none;margin-top:6px;width:100%;padding:10px;border:1.5px solid #6d28d9;border-radius:8px;font-size:13px;box-sizing:border-box;">
         </div>
         <div class="field"><label>アカウント名（SNS ID等）</label><input id="acc-new-name" type="text" placeholder="例: nakasu.burj"></div>
         <div class="field"><label>SNS種別</label>
@@ -2244,12 +2245,28 @@ function showAddAccountModal(){
   const sel=document.getElementById('acc-new-client');
   sel.innerHTML='<option value="">-- 選択 --</option>';
   clients.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  const newOpt=document.createElement('option');newOpt.value='__new__';newOpt.textContent='＋ 新しいクライアントを追加...';sel.appendChild(newOpt);
+  document.getElementById('acc-new-client-text').style.display='none';
   document.getElementById('add-account-modal').style.display='block';
+}
+function onAccClientChange(){
+  const sel=document.getElementById('acc-new-client');
+  const txt=document.getElementById('acc-new-client-text');
+  txt.style.display=sel.value==='__new__'?'block':'none';
+  if(sel.value==='__new__')txt.focus();
 }
 function closeAddAccountModal(){document.getElementById('add-account-modal').style.display='none';}
 
 function addAccount(){
-  const client=document.getElementById('acc-new-client')?.value||'';
+  let client=document.getElementById('acc-new-client')?.value||'';
+  if(client==='__new__'){
+    client=document.getElementById('acc-new-client-text')?.value.trim()||'';
+    if(client && !clients.includes(client)){
+      clients.push(client);
+      localStorage.setItem('vop_clients',JSON.stringify(clients));
+      renderClientSelect();
+    }
+  }
   const name=document.getElementById('acc-new-name').value.trim();
   const sns=document.getElementById('acc-new-sns')?.value||'tiktok';
   const memo=document.getElementById('acc-new-memo')?.value||'';

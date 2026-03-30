@@ -620,46 +620,75 @@ tr:hover td { background: #fafbff; }
 
 <!-- アカウント管理 -->
 <div class="page" id="page-account">
-  <div class="page-header"><div><h1>アカウント管理</h1><p>アカウント全体のフォロワー推移・インサイトを記録</p></div></div>
-  <div class="card">
-    <div class="sec">アカウントを選択</div>
-    <!-- SNS種別タブ -->
-    <div class="timeline-tabs" style="margin-bottom:14px;">
-      <div class="ttab active" id="sns-tab-tiktok" onclick="switchSNSTab('tiktok')">🎵 TikTok</div>
-      <div class="ttab" id="sns-tab-instagram" onclick="switchSNSTab('instagram')">📸 Instagram</div>
-    </div>
-    <div class="form-grid">
-      <div class="field"><label>アカウント名</label><select id="acc-select" onchange="loadAccountData()"><option value="">-- 選択 --</option></select></div>
-      <div class="field"><label>新規アカウント追加</label>
-        <div style="display:flex;gap:8px;"><input id="acc-new-name" type="text" placeholder="例: 中洲ブルジュ公式"><button class="btn btn-secondary" onclick="addAccount()" style="white-space:nowrap;padding:10px 14px;">追加</button></div>
+  <div class="page-header">
+    <div><h1>アカウント管理</h1><p>クライアント別にアカウントのインサイトを記録・比較</p></div>
+    <button class="btn btn-primary" onclick="showAddAccountModal()">＋ アカウント追加</button>
+  </div>
+
+  <!-- アカウント一覧（クライアント別） -->
+  <div id="account-list-wrap"></div>
+
+  <!-- 記録モーダル -->
+  <div id="acc-record-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto;">
+    <div style="background:#fff;border-radius:16px;max-width:600px;margin:40px auto;padding:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div id="acc-modal-title" style="font-size:16px;font-weight:800;color:#111827;"></div>
+        <button onclick="closeAccModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">✕</button>
+      </div>
+      <div id="acc-ss-drop" style="border:2px dashed #d1d5db;border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;cursor:pointer;background:#fafbfc;"
+        onclick="document.getElementById('acc-ss-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
+        ondragleave="this.style.borderColor='#d1d5db'"
+        ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleAccScreenshot(event.dataTransfer.files[0])">
+        <div style="font-size:20px;">📸</div>
+        <div style="font-size:13px;font-weight:600;color:#374151;">スクショをドロップ or クリックでAI読み取り</div>
+        <input type="file" id="acc-ss-input" accept="image/*" style="display:none" onchange="handleAccScreenshot(this.files[0])">
+      </div>
+      <div id="acc-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:16px;"></div>
+      <div class="form-grid col3">
+        <div class="field"><label>記録日</label><input id="acc-date" type="date"></div>
+        <div class="field"><label>フォロワー数</label><input id="acc-followers" type="number" placeholder="0"></div>
+        <div class="field"><label>総再生数</label><input id="acc-views" type="number" placeholder="0"></div>
+        <div class="field"><label>プロフィール訪問</label><input id="acc-profile" type="number" placeholder="0"></div>
+        <div class="field"><label>いいね合計</label><input id="acc-likes" type="number" placeholder="0"></div>
+        <div class="field"><label>メモ</label><input id="acc-memo" type="text" placeholder="例: 投稿3本"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn btn-secondary" onclick="closeAccModal()">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveAccountRecord()">💾 記録する</button>
       </div>
     </div>
   </div>
-  <div class="card" id="acc-record-card" style="display:none;">
-    <div class="sec">今日の数値を記録</div>
-    <!-- スクショ読み取り -->
-    <div id="acc-ss-drop" style="border:2px dashed #d1d5db;border-radius:12px;padding:18px 20px;text-align:center;margin-bottom:16px;cursor:pointer;background:#fafbfc;transition:border-color .2s;"
-      onclick="document.getElementById('acc-ss-input').click()"
-      ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
-      ondragleave="this.style.borderColor='#d1d5db'"
-      ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleAccScreenshot(event.dataTransfer.files[0])">
-      <div style="font-size:22px;margin-bottom:4px;">📸</div>
-      <div style="font-size:13px;font-weight:600;color:#374151;">アカウントインサイトのスクショをドロップ or クリック</div>
-      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">AIがフォロワー数・再生数などを自動読み取り</div>
-      <input type="file" id="acc-ss-input" accept="image/*" style="display:none" onchange="handleAccScreenshot(this.files[0])">
+
+  <!-- アカウント追加モーダル -->
+  <div id="add-account-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;">
+    <div style="background:#fff;border-radius:16px;max-width:440px;margin:80px auto;padding:24px;">
+      <div style="font-size:16px;font-weight:800;margin-bottom:16px;">＋ アカウントを追加</div>
+      <div class="form-grid">
+        <div class="field"><label>クライアント名</label>
+          <select id="acc-new-client" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;">
+            <option value="">-- 選択 --</option>
+          </select>
+        </div>
+        <div class="field"><label>アカウント名（SNS ID等）</label><input id="acc-new-name" type="text" placeholder="例: nakasu.burj"></div>
+        <div class="field"><label>SNS種別</label>
+          <select id="acc-new-sns" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;">
+            <option value="tiktok">🎵 TikTok</option>
+            <option value="instagram">📸 Instagram</option>
+            <option value="youtube">▶️ YouTube</option>
+            <option value="twitter">🐦 X(Twitter)</option>
+          </select>
+        </div>
+        <div class="field"><label>メモ（任意）</label><input id="acc-new-memo" type="text" placeholder="例: メインアカウント"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn btn-secondary" onclick="closeAddAccountModal()">キャンセル</button>
+        <button class="btn btn-primary" onclick="addAccount()">追加</button>
+      </div>
     </div>
-    <div id="acc-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:18px;"></div>
-    <div class="form-grid col3">
-      <div class="field"><label>記録日</label><input id="acc-date" type="date"></div>
-      <div class="field"><label>フォロワー数（総数）</label><input id="acc-followers" type="number" placeholder="0"></div>
-      <div class="field"><label>総再生数（期間内）</label><input id="acc-views" type="number" placeholder="0"></div>
-      <div class="field"><label>プロフィール訪問数</label><input id="acc-profile" type="number" placeholder="0"></div>
-      <div class="field"><label>いいね合計</label><input id="acc-likes" type="number" placeholder="0"></div>
-      <div class="field"><label>メモ</label><input id="acc-memo" type="text" placeholder="例: リール投稿3本"></div>
-    </div>
-    <div class="actions"><button class="btn btn-primary" onclick="saveAccountRecord()">💾 記録する</button></div>
   </div>
-  <div id="account-stats-output"></div>
+
+  <div id="account-stats-output" style="display:none;"></div>
 </div>
 
 <!-- キャストマスタ -->
@@ -813,6 +842,7 @@ let castMaster     = JSON.parse(localStorage.getItem('vop_casts')           || '
 let clients        = JSON.parse(localStorage.getItem('vop_clients')         || '["中洲ブルジュ"]');
 let accounts       = JSON.parse(localStorage.getItem('vop_accounts')        || '{}');
 let insightRecords = JSON.parse(localStorage.getItem('vop_insight_records') || '{}');
+let accountMeta    = JSON.parse(localStorage.getItem('vop_account_meta')        || '{}');
 let isSyncing      = false;
 
 // ── GAS DB SYNC ──
@@ -843,7 +873,7 @@ async function gasSave() {
   if (!GAS_URL || isSyncing) return;
   isSyncing = true;
   try {
-    const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster };
+    const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster, accountMeta };
     // iframe trick: GASへno-cors GETで送信（CORS完全回避）
     // データをチャンク分割してキーごとに送信
     const keys = Object.keys(data);
@@ -961,6 +991,7 @@ window.onload = async () => {
   renderFormEditorSelect();
   renderFormAccountSelect();
   renderShopDatalist();
+  renderAccountList();
   // GASからデータ読み込み（GAS URLが設定されていれば）
   if (GAS_URL) {
     showSyncBanner('☁️ GASからデータ読み込み中...');
@@ -977,7 +1008,7 @@ function goto(el, page) {
   el.classList.add('active');
   if(page==='filing')   { renderFilingClientTabs(); renderFiling(); }
   if(page==='insights') { populateInsightProjects(); }
-  if(page==='account')  { renderAccountSelect(); }
+  if(page==='account')  { renderAccountSelect(); renderAccountList(); }
   if(page==='cast')     { renderCastMasterPage(); }
   if(page==='editor')   { renderEditorPage(); }
 }
@@ -1819,36 +1850,147 @@ function getAccountNames(){
   return [...new Set(Object.keys(accounts).map(k=>k.replace(/__tiktok$|__instagram$/,'')))].filter(Boolean);
 }
 function renderAccountSelect(){
-  const sel=document.getElementById('acc-select');const cur=sel.value;
-  sel.innerHTML='<option value="">-- 選択 --</option>';
-  getAccountNames().forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;if(name===cur)o.selected=true;sel.appendChild(o);});
+  // 後方互換：フォームのセレクトボックス用
+  renderFormAccountSelect();
+  renderAccountList();
 }
+
+function renderAccountList(){
+  const wrap=document.getElementById('account-list-wrap');
+  if(!wrap)return;
+
+  // 既存accountsからmetaが未登録のものを自動登録
+  Object.keys(accounts).forEach(key=>{
+    if(!accountMeta[key]){
+      const parts=key.split('__');
+      const name=parts[0]; const sns=parts[1]||'tiktok';
+      // clientを推測（clientsリストから部分一致）
+      const matchedClient=clients.find(c=>name.includes(c)||c.includes(name))||clients[0]||'未設定';
+      accountMeta[key]={client:matchedClient,name,sns,memo:''};
+    }
+  });
+
+  // クライアント別グループ化
+  const byClient={};
+  Object.keys(accountMeta).forEach(key=>{
+    const m=accountMeta[key];
+    if(!byClient[m.client])byClient[m.client]=[];
+    byClient[m.client].push({...m,key});
+  });
+
+  const snsIcon={tiktok:'🎵',instagram:'📸',youtube:'▶️',twitter:'🐦'};
+  const snsLabel={tiktok:'TikTok',instagram:'Instagram',youtube:'YouTube',twitter:'X'};
+
+  if(!Object.keys(byClient).length){
+    wrap.innerHTML=`<div class="card"><div class="empty-state"><div class="big">📱</div>アカウントがまだありません<br><span style="font-size:12px;color:#9ca3af;">「＋ アカウント追加」から登録してください</span></div></div>`;
+    return;
+  }
+
+  wrap.innerHTML=Object.entries(byClient).map(([client,accs])=>`
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="sec" style="margin:0;">${client}</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        ${accs.map(a=>{
+          const recs=accounts[a.key]||[];
+          const latest=recs.length?recs[recs.length-1]:null;
+          const prev=recs.length>1?recs[recs.length-2]:null;
+          const diff=(latest&&prev)?latest.followers-prev.followers:null;
+          const linkedCount=projects.filter(p=>p.accountName===a.name||p.client===client).length;
+          return `<div onclick="openAccRecord('${a.key}')" style="cursor:pointer;border:1.5px solid #e5e7eb;border-radius:12px;padding:14px 16px;min-width:160px;flex:1;max-width:220px;background:#fafbfc;transition:all .15s;" onmouseover="this.style.borderColor='#6d28d9';this.style.background='#f5f3ff'" onmouseout="this.style.borderColor='#e5e7eb';this.style.background='#fafbfc'">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <span style="font-size:18px;">${snsIcon[a.sns]||'📱'}</span>
+              <div style="display:flex;gap:4px;">
+                <button onclick="event.stopPropagation();deleteAccount('${a.key}')" style="background:none;border:none;cursor:pointer;color:#d1d5db;font-size:12px;padding:2px 4px;" title="削除">🗑</button>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:2px;">${a.name}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-bottom:8px;">${snsLabel[a.sns]||a.sns}${a.memo?` · ${a.memo}`:''}</div>
+            ${latest?`
+              <div style="font-size:20px;font-weight:800;color:#6d28d9;">${fmt(latest.followers)}</div>
+              <div style="font-size:11px;color:${diff===null?'#9ca3af':diff>=0?'#059669':'#ef4444'};">${diff===null?'初回記録':diff>=0?`▲${fmt(diff)}`:`▼${fmt(Math.abs(diff))}`} フォロワー</div>
+            `:`<div style="font-size:12px;color:#9ca3af;">未記録</div>`}
+            <div style="font-size:10px;color:#c7d2fe;margin-top:6px;">動画${linkedCount}本 · タップで記録</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+let currentAccKey = '';
+function openAccRecord(key){
+  currentAccKey=key;
+  const m=accountMeta[key]||{};
+  const modal=document.getElementById('acc-record-modal');
+  document.getElementById('acc-modal-title').innerHTML=`<span style="font-size:18px;">${{tiktok:'🎵',instagram:'📸',youtube:'▶️',twitter:'🐦'}[m.sns]||'📱'}</span> ${m.name} <span style="font-size:12px;color:#9ca3af;font-weight:400;">${m.client||''}</span>`;
+  document.getElementById('acc-date').value=new Date().toISOString().slice(0,10);
+  ['acc-followers','acc-views','acc-profile','acc-likes','acc-memo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  modal.style.display='block';
+  // stats表示
+  const out=document.getElementById('account-stats-output');
+  out.style.display='block';
+  currentSNSTab=(m.sns||'tiktok');
+  renderAccountStats(m.name);
+}
+function closeAccModal(){document.getElementById('acc-record-modal').style.display='none';}
+
+function showAddAccountModal(){
+  const sel=document.getElementById('acc-new-client');
+  sel.innerHTML='<option value="">-- 選択 --</option>';
+  clients.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  document.getElementById('add-account-modal').style.display='block';
+}
+function closeAddAccountModal(){document.getElementById('add-account-modal').style.display='none';}
+
 function addAccount(){
-  const name=document.getElementById('acc-new-name').value.trim();if(!name)return;
-  const key=`${name}__tiktok`;
+  const client=document.getElementById('acc-new-client')?.value||'';
+  const name=document.getElementById('acc-new-name').value.trim();
+  const sns=document.getElementById('acc-new-sns')?.value||'tiktok';
+  const memo=document.getElementById('acc-new-memo')?.value||'';
+  if(!name){alert('アカウント名を入力してください');return;}
+  const key=`${name}__${sns}`;
   if(!accounts[key])accounts[key]=[];
+  accountMeta[key]={client:client||'未設定',name,sns,memo};
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
-  document.getElementById('acc-new-name').value='';
-  renderAccountSelect(); renderFormAccountSelect();
-  document.getElementById('acc-select').value=name; loadAccountData();
+  localStorage.setItem('vop_account_meta',JSON.stringify(accountMeta));
+  closeAddAccountModal();
+  renderAccountList();
+  renderFormAccountSelect();
   toast(`「${name}」を追加しました`);
 }
+function deleteAccount(key){
+  if(!confirm('このアカウントを削除しますか？（記録データも削除されます）'))return;
+  delete accounts[key];
+  delete accountMeta[key];
+  localStorage.setItem('vop_accounts',JSON.stringify(accounts));
+  localStorage.setItem('vop_account_meta',JSON.stringify(accountMeta));
+  document.getElementById('account-stats-output').style.display='none';
+  renderAccountList();
+  renderFormAccountSelect();
+  toast('削除しました');
+}
 function loadAccountData(){
-  const name=document.getElementById('acc-select').value;
-  document.getElementById('acc-record-card').style.display=name?'':'none';
-  if(!name){document.getElementById('account-stats-output').innerHTML='';return;}
-  renderAccountStats(name);
+  // 後方互換
+  const sel=document.getElementById('acc-select');
+  if(sel&&sel.value) openAccRecord(`${sel.value}__${currentSNSTab}`);
 }
 function saveAccountRecord(){
-  const name=document.getElementById('acc-select').value;if(!name){alert('アカウントを選択してください');return;}
-  const key=`${name}__${currentSNSTab}`;
-  const rec={date:document.getElementById('acc-date').value||new Date().toISOString().slice(0,10),sns:currentSNSTab,followers:+document.getElementById('acc-followers').value||0,views:+document.getElementById('acc-views').value||0,profile:+document.getElementById('acc-profile').value||0,likes:+document.getElementById('acc-likes').value||0,memo:document.getElementById('acc-memo').value,savedAt:new Date().toISOString()};
+  const key=currentAccKey;if(!key){alert('アカウントを選択してください');return;}
+  const m=accountMeta[key]||{};
+  const name=m.name||(key.split('__')[0]);
+  const sns=m.sns||currentSNSTab;
+  const rec={date:document.getElementById('acc-date').value||new Date().toISOString().slice(0,10),sns,followers:+document.getElementById('acc-followers').value||0,views:+document.getElementById('acc-views').value||0,profile:+document.getElementById('acc-profile').value||0,likes:+document.getElementById('acc-likes').value||0,memo:document.getElementById('acc-memo').value,savedAt:new Date().toISOString()};
   if(!accounts[key])accounts[key]=[];
   const idx=accounts[key].findIndex(r=>r.date===rec.date);
   if(idx>=0)accounts[key][idx]=rec;else accounts[key].push(rec);
   accounts[key].sort((a,b)=>a.date>b.date?1:-1);
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
-  renderAccountStats(name);toast('記録しました ✓');
+  closeAccModal();
+  renderAccountList();
+  renderAccountStats(name);
+  toast('記録しました ✓');
   gasSave();
 }
 function renderAccountStats(name){

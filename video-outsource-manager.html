@@ -2210,7 +2210,7 @@ function deletePost(postId, accKey){
 function openPostInsight(itemId, title){
   // インサイット入力モーダルを表示
   currentPostInsightId=itemId;
-  const modal=document.getElementById('post-insight-modal');
+  const modal=document.getElementById('pi-modal');
   if(!modal)return;
   document.getElementById('pi-title').textContent=title;
   document.getElementById('pi-modal').style.display='block';

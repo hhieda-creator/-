@@ -1961,7 +1961,7 @@ function renderAccountList(){
     return;
   }
 
-  wrap.innerHTML=Object.entries(byClient).map(([client,accs])=>`
+  wrap.innerHTML=Object.entries(byClient).filter(([client,accs])=>accs.length>0).map(([client,accs])=>`
     <div class="card" style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div class="sec" style="margin:0;">${client}</div>
@@ -1986,7 +1986,7 @@ function renderAccountList(){
               <div style="font-size:20px;font-weight:800;color:#6d28d9;">${fmt(latest.followers)}</div>
               <div style="font-size:11px;color:${diff===null?'#9ca3af':diff>=0?'#059669':'#ef4444'};">${diff===null?'初回記録':diff>=0?`▲${fmt(diff)}`:`▼${fmt(Math.abs(diff))}`} フォロワー</div>
             `:`<div style="font-size:12px;color:#9ca3af;">未記録</div>`}
-            <div style="font-size:10px;color:#c7d2fe;margin-top:6px;">動画${linkedCount}本 · タップで記録</div>
+            <div style="font-size:10px;color:#c7d2fe;margin-top:6px;">動画${linkedCount}本 · タップで詳細</div>
           </div>`;
         }).join('')}
       </div>
@@ -2001,11 +2001,13 @@ function openAccRecord(key){
   currentAccKey=key;
   const m=accountMeta[key]||{};
   currentSNSTab=(m.sns||'tiktok');
+  currentAccTab='posts';
+  // リストを隠して詳細を表示
+  document.getElementById('account-list-wrap').style.display='none';
   const out=document.getElementById('account-stats-output');
   out.style.display='block';
-  // スクロール
-  out.scrollIntoView({behavior:'smooth',block:'start'});
-  renderAccDetail(key, currentAccTab);
+  window.scrollTo({top:0,behavior:'smooth'});
+  renderAccDetail(key, 'posts');
 }
 
 function renderAccDetail(key, tab){
@@ -2145,6 +2147,7 @@ function renderAccDetail(key, tab){
 function closeAccDetail(){
   document.getElementById('account-stats-output').style.display='none';
   document.getElementById('account-stats-output').innerHTML='';
+  document.getElementById('account-list-wrap').style.display='';
 }
 
 function gotoInsight(projId){
@@ -2309,6 +2312,8 @@ function deleteAccount(key){
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
   localStorage.setItem('vop_account_meta',JSON.stringify(accountMeta));
   document.getElementById('account-stats-output').style.display='none';
+  document.getElementById('account-stats-output').innerHTML='';
+  document.getElementById('account-list-wrap').style.display='';
   renderAccountList();
   renderFormAccountSelect();
   toast('削除しました');

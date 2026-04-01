@@ -2008,6 +2008,7 @@ function openAccRecord(key){
 function renderAccDetail(key, tab){
   currentAccTab=tab;
   const m=accountMeta[key]||{};
+  const recs=accounts[key]||[];
   const snsIcon={tiktok:'🎵',instagram:'📸',youtube:'▶️',twitter:'🐦'};
   const snsLabel={tiktok:'TikTok',instagram:'Instagram',youtube:'YouTube',twitter:'X'};
   const out=document.getElementById('account-stats-output');
@@ -2598,14 +2599,20 @@ function renderAccountStats(name){
   const snsLabel=currentSNSTab==='instagram'?'📸 Instagram':'🎵 TikTok';
   const out=document.getElementById('account-stats-output');
 
-  // 紐づいた案件：accountName一致 OR client一致（投稿日なしも含む）
+  // 紐づいた案件：accountName一致 OR client一致
   const linkedProjects=projects.filter(p=>
     p.accountName===name || p.client===name
   ).sort((a,b)=>(b.postDate||b.ym||'').localeCompare(a.postDate||a.ym||''));
-  // 投稿日セット
-  const postDates=new Set(linkedProjects.filter(p=>p.postDate).map(p=>p.postDate));
+  // 独立投稿
+  const accKey=`${name}__${currentSNSTab}`;
+  const accPosts=posts.filter(p=>p.accountKey===accKey||p.accountKey===name).sort((a,b)=>(b.postDate||'').localeCompare(a.postDate||''));
+  // 投稿日セット（案件＋独立投稿）
+  const postDates=new Set([
+    ...linkedProjects.filter(p=>p.postDate).map(p=>p.postDate),
+    ...accPosts.filter(p=>p.postDate).map(p=>p.postDate)
+  ]);
 
-  if(!recs.length && !linkedProjects.length){
+  if(!recs.length && !linkedProjects.length && !accPosts.length){
     out.innerHTML=`<div class="card"><div class="empty-state"><div class="big">👤</div>${snsLabel} のデータがまだありません<br><span style="font-size:12px;color:#9ca3af;">案件作成時にアカウントを選択すると動画と紐づきます</span></div></div>`;
     return;
   }
@@ -2621,7 +2628,7 @@ function renderAccountStats(name){
       <div class="stat-card"><div class="slabel">最新フォロワー</div><div class="sval purple">${fmt(latest.followers)}</div></div>
       <div class="stat-card"><div class="slabel">前回比</div><div class="sval ${diff>=0?'green':'pink'}">${diff>=0?'+':''}${fmt(diff)}</div></div>
       <div class="stat-card"><div class="slabel">直近再生数</div><div class="sval blue">${fmt(latest.views||0)}</div></div>
-      <div class="stat-card"><div class="slabel">紐づき動画数</div><div class="sval pink">${linkedProjects.length}本</div></div>
+      <div class="stat-card"><div class="slabel">紐づき動画数</div><div class="sval pink">${linkedProjects.length+accPosts.length}本</div></div>
     </div>`:'';
 
   // フォロワー推移 SVG折れ線グラフ
@@ -2675,36 +2682,53 @@ function renderAccountStats(name){
     </div>`;
   })()
 
-  // 紐づき動画インサイト一覧
-  const pColors={'48h':'badge-pink','1week':'badge-purple','1month':'badge-blue'};
-  const pLabels={'48h':'48h','1week':'1週間','1month':'1ヶ月'};
-  const videoRows=linkedProjects.map(p=>{
-    const periods=['48h','1week','1month'];
-    const insightCells=periods.map(period=>{
-      const r=insightRecords[`${p.id}_${period}`];
-      if(!r)return `<td style="color:#d1d5db;font-size:12px;" colspan="1">—</td>`;
+  // 動画一覧（案件＋独立投稿）
+  const mkStatCells=(itemId)=>{
+    const sid=String(itemId);
+    const snapKeys=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
+    const hasNew=snapKeys.length>0;
+    const periods=hasNew?snapKeys.slice(-3):['48h','1week','1month'];
+    return periods.map(period=>{
+      const r=hasNew?insightRecords[period]:insightRecords[sid+'_'+period];
+      if(!r)return `<td style="color:#d1d5db;font-size:11px;text-align:center;">—</td>`;
       const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):'—';
-      return `<td><div style="font-size:11px;line-height:1.6;"><div><strong>${fmt(r.views||0)}</strong> <span style="color:#9ca3af;font-size:10px;">再生</span></div><div style="color:#6d28d9;">${er}% ER</div><div style="color:#6b7280;font-size:10px;">保存${fmt(r.saves||0)}</div>${r.watchTime?`<div style="color:#0891b2;font-size:10px;">⏱${r.watchTime}s</div>`:''} ${r.fullViewRate?`<div style="color:#059669;font-size:10px;">フル${r.fullViewRate}%</div>`:''} ${r.dropoutTime?`<div style="color:#ef4444;font-size:10px;">離脱${r.dropoutTime}s</div>`:''}</div></td>`;
+      const lbl=hasNew?(r.label||r.date||''):({'48h':'48h','1week':'1週','1month':'1ヶ月'}[period]||period);
+      return `<td><div style="font-size:11px;line-height:1.6;text-align:center;">
+        <div style="font-size:9px;color:#9ca3af;">${lbl}</div>
+        <div><strong>${fmt(r.views||0)}</strong></div>
+        <div style="color:#6d28d9;">${er}% ER</div>
+        ${r.dropoutTime?`<div style="color:#ef4444;font-size:10px;">離脱${r.dropoutTime}s</div>`:''}
+      </div></td>`;
     }).join('');
-    return `<tr>
-      <td><span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.postDate||p.ym||'—'}</span></td>
-      <td><strong style="font-size:13px;">${p.title}</strong><div style="font-size:11px;color:#9ca3af;">${typeLabels[p.type]||''}</div>
-        <button class="btn-sm" style="margin-top:4px;" onclick="openPostInsight('${p.id}','${p.title.replace(/'/g,"\'")}','${p.type||''}')">📊 入力</button>
-      </td>
-      ${insightCells}
-    </tr>`;
-  }).join('');
-
+  };
+  const projRows2=linkedProjects.map(p=>`<tr>
+    <td style="white-space:nowrap;"><span style="font-family:monospace;font-size:11px;color:#6b7280;">${p.postDate||p.ym||'—'}</span><br><span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:1px 5px;border-radius:4px;">案件</span></td>
+    <td><strong style="font-size:13px;">${p.title}</strong><div style="font-size:11px;color:#9ca3af;">${typeLabels[p.type]||''}</div>
+      <button class="btn-sm" style="margin-top:4px;" onclick="openPostInsight('${p.id}','${p.title.replace(/'/g,"\'")}','${p.type||''}')">📊 入力</button>
+    </td>
+    ${mkStatCells(p.id)}
+  </tr>`).join('');
+  const pBadge={organic:'<span style="font-size:10px;background:#dcfce7;color:#059669;padding:1px 5px;border-radius:4px;">🌱</span>',ad:'<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;">📣</span>',organic_ad:'<span style="font-size:10px;background:#fef3c7;color:#d97706;padding:1px 5px;border-radius:4px;">🌱📣</span>'};
+  const postRows2=accPosts.map(p=>`<tr>
+    <td style="white-space:nowrap;"><span style="font-family:monospace;font-size:11px;color:#6b7280;">${p.postDate||'—'}</span><br>${pBadge[p.postType||'organic']||pBadge.organic}</td>
+    <td><strong style="font-size:13px;">${p.title}</strong>
+      <button class="btn-sm" style="margin-top:4px;" onclick="openPostInsight('post_${p.id}','${p.title.replace(/'/g,"\'")}','${p.postType||'organic'}')">📊 入力</button>
+    </td>
+    ${mkStatCells('post_'+p.id)}
+  </tr>`).join('');
+  const videoRows=projRows2+postRows2;
   // 動画比較グラフ（再生数バー）
-  const compareChartHtml = linkedProjects.length ? (()=>{
-    const period = '1week'; // デフォルトは1週間データで比較
-    const videoData = linkedProjects.map(p=>{
-      const r48 = insightRecords[`${p.id}_48h`];
-      const r1w = insightRecords[`${p.id}_1week`];
-      const r1m = insightRecords[`${p.id}_1month`];
-      const best = r1m||r1w||r48;
-      return {title:p.title, postDate:p.postDate||p.ym||'', r48, r1w, r1m, best};
-    }).filter(x=>x.best);
+  const compareChartHtml = (linkedProjects.length||accPosts.length) ? (()=>{
+    const getBest=(id)=>{
+      const sid=String(id);
+      const snapKeys=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
+      if(snapKeys.length) return insightRecords[snapKeys[snapKeys.length-1]];
+      return insightRecords[sid+'_1month']||insightRecords[sid+'_1week']||insightRecords[sid+'_48h'];
+    };
+    const videoData=[
+      ...linkedProjects.map(p=>({title:p.title,best:getBest(p.id)})),
+      ...accPosts.map(p=>({title:p.title,best:getBest('post_'+p.id)}))
+    ].filter(x=>x.best);
     if(!videoData.length) return '';
     const maxV = Math.max(...videoData.map(x=>x.best.views||0),1);
     const bars = videoData.map((x,i)=>{
@@ -2728,7 +2752,7 @@ function renderAccountStats(name){
     </div>`;
   })() : '';
 
-  const videoTableHtml=linkedProjects.length?`
+  const videoTableHtml=(linkedProjects.length||accPosts.length)?`
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:16px 20px 0;"><div class="sec">動画一覧 &amp; インサイト</div></div>
       <table>
@@ -2740,7 +2764,7 @@ function renderAccountStats(name){
         </tr></thead>
         <tbody>${videoRows}</tbody>
       </table>
-    </div>`:'<div class="card"><div style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0;">案件作成時にこのアカウントを選択すると動画インサイトが表示されます</div></div>';
+    </div>`:'<div class="card"><div style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0;">「＋ 投稿を追加」から投稿を登録するか、案件作成時にアカウントを選択すると表示されます</div></div>';
 
   // アカウントデータテーブル
   const accRows=recs.length?[...recs].reverse().slice(0,20).map(r=>`<tr>

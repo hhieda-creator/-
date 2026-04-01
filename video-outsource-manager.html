@@ -1103,6 +1103,7 @@ function goto(el, page) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   el.classList.add('active');
+  if(page==='new')    { renderClientSelect(); renderFormEditorSelect(); renderFormAccountSelect(); }
   if(page==='filing')   { renderFilingClientTabs(); renderFiling(); }
   if(page==='insights') { populateInsightProjects(); }
   if(page==='account')  { renderAccountSelect(); renderAccountList(); }
@@ -3331,6 +3332,7 @@ function gotoMobile(el, page){
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     const pg = document.getElementById(`page-${page}`);
     if(pg) pg.classList.add('active');
+    if(page==='new') { renderClientSelect(); renderFormEditorSelect(); renderFormAccountSelect(); }
     if(page==='filing') { renderFilingClientTabs(); renderFiling(); }
     if(page==='insights') populateInsightProjects();
     if(page==='account') renderAccountSelect();

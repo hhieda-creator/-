@@ -1103,7 +1103,14 @@ function goto(el, page) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   el.classList.add('active');
-  if(page==='new')    { renderClientSelect(); renderFormEditorSelect(); renderFormAccountSelect(); }
+  if(page==='new'){
+    if(!window._skipNewRender){
+      renderClientSelect();
+      renderFormEditorSelect();
+      renderFormAccountSelect();
+    }
+    window._skipNewRender=false;
+  }
   if(page==='filing')   { renderFilingClientTabs(); renderFiling(); }
   if(page==='insights') { populateInsightProjects(); }
   if(page==='account')  { renderAccountSelect(); renderAccountList(); }
@@ -1531,11 +1538,14 @@ function loadProject(id){
   if(document.getElementById('f-plan-ref'))       document.getElementById('f-plan-ref').value=p.planRef||'';
   if(document.getElementById('f-plan-kpi'))       document.getElementById('f-plan-kpi').value=p.planKpi||'';
   onWorktypeChange();
+  // セレクト類を先に描画してから値をセット
+  renderClientSelect();
   renderFormEditorSelect();
+  renderFormAccountSelect();
   document.getElementById('f-editor').value=p.assignedEditor||'';
   document.getElementById('f-type').value=p.type||'cabaret';
-  renderClientSelect();
   document.getElementById('f-client').value=p.client||'';
+  if(document.getElementById('f-account'))document.getElementById('f-account').value=p.accountName||'';
   document.getElementById('f-shop').value=p.shop||''; document.getElementById('f-edit-notes').value=p.editNotes||'';
   document.getElementById('f-special').value=p.special||''; document.getElementById('f-intro-text').value=p.introText||'';
   document.getElementById('f-font').value=p.font||''; document.getElementById('f-telop-style').value=p.telopStyle||'';
@@ -1550,6 +1560,7 @@ function loadProject(id){
   if(p.cast)p.cast.forEach((c,i)=>{const ni=document.getElementById(`cast-name-${i+1}`);const di=document.getElementById(`cast-id-${i+1}`);if(ni)ni.value=c.name||'';if(di)di.value=c.handle||'';});
   updatePreview();
   currentEditingProjectId = id;
+  window._skipNewRender = true;
   goto(document.querySelector('[data-page=new]'),'new');
   toast('案件を読み込みました');
 }
@@ -3332,7 +3343,14 @@ function gotoMobile(el, page){
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     const pg = document.getElementById(`page-${page}`);
     if(pg) pg.classList.add('active');
-    if(page==='new') { renderClientSelect(); renderFormEditorSelect(); renderFormAccountSelect(); }
+    if(page==='new'){
+      if(!window._skipNewRender){
+        renderClientSelect();
+        renderFormEditorSelect();
+        renderFormAccountSelect();
+      }
+      window._skipNewRender=false;
+    }
     if(page==='filing') { renderFilingClientTabs(); renderFiling(); }
     if(page==='insights') populateInsightProjects();
     if(page==='account') renderAccountSelect();

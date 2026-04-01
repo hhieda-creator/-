@@ -357,7 +357,7 @@ tr:hover td { background: #fafbff; }
 <div class="bottom-tabbar">
   <button class="btab active" id="btab-new" onclick="gotoMobile(this,'new')"><span class="bti">✏️</span>指示書</button>
   <button class="btab" id="btab-filing" onclick="gotoMobile(this,'filing')"><span class="bti">📁</span>案件</button>
-  <button class="btab" id="btab-insights" onclick="gotoMobile(this,'insights')"><span class="bti">📊</span>インサイト</button>
+  <button class="btab" id="btab-insights" onclick="gotoMobile(this,'insights')" style="display:none;"><span class="bti">📊</span>インサイト</button>
   <button class="btab" id="btab-account" onclick="gotoMobile(this,'account')"><span class="bti">👤</span>アカウント</button>
   <button class="btab" id="btab-more" onclick="toggleDrawer()"><span class="bti">☰</span>もっと</button>
 </div>
@@ -374,7 +374,7 @@ tr:hover td { background: #fafbff; }
   </div>
   <div class="nav-section">
     <div class="nav-label">分析</div>
-    <div class="nav-item" data-page="insights" onclick="goto(this,'insights')"><span class="ni">📊</span><span>動画インサイト</span></div>
+    <div class="nav-item" data-page="insights" onclick="goto(this,'insights')" style="display:none;"><span class="ni">📊</span><span>動画インサイト</span></div>
     <div class="nav-item" data-page="account" onclick="goto(this,'account')"><span class="ni">👤</span><span>アカウント管理</span></div>
   </div>
   <div class="nav-section">
@@ -628,37 +628,7 @@ tr:hover td { background: #fafbff; }
   <!-- アカウント一覧（クライアント別） -->
   <div id="account-list-wrap"></div>
 
-  <!-- 記録モーダル -->
-  <div id="acc-record-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto;">
-    <div style="background:#fff;border-radius:16px;max-width:600px;margin:40px auto;padding:24px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div id="acc-modal-title" style="font-size:16px;font-weight:800;color:#111827;"></div>
-        <button onclick="closeAccModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">✕</button>
-      </div>
-      <div id="acc-ss-drop" style="border:2px dashed #d1d5db;border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;cursor:pointer;background:#fafbfc;"
-        onclick="document.getElementById('acc-ss-input').click()"
-        ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
-        ondragleave="this.style.borderColor='#d1d5db'"
-        ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleAccScreenshot(event.dataTransfer.files[0])">
-        <div style="font-size:20px;">📸</div>
-        <div style="font-size:13px;font-weight:600;color:#374151;">スクショをドロップ or クリックでAI読み取り</div>
-        <input type="file" id="acc-ss-input" accept="image/*" style="display:none" onchange="handleAccScreenshot(this.files[0])">
-      </div>
-      <div id="acc-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:16px;"></div>
-      <div class="form-grid col3">
-        <div class="field"><label>記録日</label><input id="acc-date" type="date"></div>
-        <div class="field"><label>フォロワー数</label><input id="acc-followers" type="number" placeholder="0"></div>
-        <div class="field"><label>総再生数</label><input id="acc-views" type="number" placeholder="0"></div>
-        <div class="field"><label>プロフィール訪問</label><input id="acc-profile" type="number" placeholder="0"></div>
-        <div class="field"><label>いいね合計</label><input id="acc-likes" type="number" placeholder="0"></div>
-        <div class="field"><label>メモ</label><input id="acc-memo" type="text" placeholder="例: 投稿3本"></div>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-        <button class="btn btn-secondary" onclick="closeAccModal()">キャンセル</button>
-        <button class="btn btn-primary" onclick="saveAccountRecord()">💾 記録する</button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- アカウント追加モーダル -->
   <div id="add-account-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;">
@@ -715,35 +685,57 @@ tr:hover td { background: #fafbff; }
 
   <!-- 投稿インサイット入力モーダル -->
   <div id="pi-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;overflow-y:auto;">
-    <div style="background:#fff;border-radius:16px;max-width:600px;margin:40px auto;padding:24px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="background:#fff;border-radius:16px;max-width:640px;margin:40px auto;padding:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <div style="font-size:15px;font-weight:800;color:#111827;">📊 <span id="pi-title"></span></div>
         <button onclick="closePostInsightModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">✕</button>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-        <button class="pi-tab ttab active" data-period="48h" onclick="switchPostPeriod('48h')">48時間</button>
-        <button class="pi-tab ttab" data-period="1week" onclick="switchPostPeriod('1week')">1週間</button>
-        <button class="pi-tab ttab" data-period="1month" onclick="switchPostPeriod('1month')">1ヶ月</button>
-        <button class="pi-tab ttab" data-period="organic" onclick="switchPostPeriod('organic')" id="pi-tab-organic" style="display:none;background:#dcfce7;color:#059669;border-color:#86efac;">🌱 広告前</button>
-        <button class="pi-tab ttab" data-period="ad" onclick="switchPostPeriod('ad')" id="pi-tab-ad" style="display:none;background:#fee2e2;color:#dc2626;border-color:#fca5a5;">📣 広告後</button>
-      </div>
-      <div id="pi-ad-diff" style="display:none;margin-bottom:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;font-size:12px;"></div>
-      <div class="form-grid col3">
-        <div class="field"><label>再生数</label><input id="pi-views" type="number" placeholder="0"></div>
-        <div class="field"><label>いいね数</label><input id="pi-likes" type="number" placeholder="0"></div>
-        <div class="field"><label>コメント数</label><input id="pi-comments" type="number" placeholder="0"></div>
-        <div class="field"><label>シェア数</label><input id="pi-shares" type="number" placeholder="0"></div>
-        <div class="field"><label>保存数</label><input id="pi-saves" type="number" placeholder="0"></div>
-        <div class="field"><label>フォロワー獲得</label><input id="pi-followers" type="number" placeholder="0"></div>
-        <div class="field"><label>プロフクリック</label><input id="pi-profile" type="number" placeholder="0"></div>
-        <div class="field"><label>平均視聴時間(秒)</label><input id="pi-watchtime" type="number" placeholder="0" step="0.1"></div>
-        <div class="field"><label>フル視聴率(%)</label><input id="pi-fullview" type="number" placeholder="0" step="0.1"></div>
-        <div class="field"><label>50%視聴地点(秒)</label><input id="pi-halfview" type="number" placeholder="0" step="0.1"></div>
-        <div class="field"><label>離脱が多い時間(秒)</label><input id="pi-dropout" type="number" placeholder="0" step="0.1"></div>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-        <button class="btn btn-secondary" onclick="closePostInsightModal()">閉じる</button>
-        <button class="btn btn-primary" onclick="savePostInsight()">💾 保存</button>
+
+      <!-- 既存スナップショット一覧 -->
+      <div id="pi-snap-list" style="margin-bottom:16px;"></div>
+
+      <!-- 新規スナップショット入力エリア -->
+      <div id="pi-new-snap" style="border:1.5px solid #e5e7eb;border-radius:12px;padding:16px;background:#fafbfc;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:700;color:#374151;">＋ 新しいスナップショットを記録</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label style="font-size:12px;color:#6b7280;">記録日時</label>
+            <input id="pi-snap-date" type="date" style="font-size:12px;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;">
+            <select id="pi-snap-label" style="font-size:12px;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;color:#374151;">
+              <option value="">ラベル（任意）</option>
+              <option value="48h">48時間後</option>
+              <option value="1week">1週間後</option>
+              <option value="1month">1ヶ月後</option>
+              <option value="ad_start">広告開始直前</option>
+              <option value="ad_3day">広告3日後</option>
+              <option value="ad_1week">広告1週間後</option>
+              <option value="ad_end">広告終了後</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+          <label style="font-size:12px;color:#6b7280;min-width:60px;">広告中？</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
+            <input type="checkbox" id="pi-snap-isad"> このスナップ時点で広告運用中
+          </label>
+        </div>
+        <div class="form-grid col3" style="gap:8px;">
+          <div class="field"><label>再生数</label><input id="pi-views" type="number" placeholder="0"></div>
+          <div class="field"><label>いいね数</label><input id="pi-likes" type="number" placeholder="0"></div>
+          <div class="field"><label>コメント数</label><input id="pi-comments" type="number" placeholder="0"></div>
+          <div class="field"><label>シェア数</label><input id="pi-shares" type="number" placeholder="0"></div>
+          <div class="field"><label>保存数</label><input id="pi-saves" type="number" placeholder="0"></div>
+          <div class="field"><label>フォロワー獲得</label><input id="pi-followers" type="number" placeholder="0"></div>
+          <div class="field"><label>プロフクリック</label><input id="pi-profile" type="number" placeholder="0"></div>
+          <div class="field"><label>平均視聴時間(秒)</label><input id="pi-watchtime" type="number" placeholder="0" step="0.1"></div>
+          <div class="field"><label>フル視聴率(%)</label><input id="pi-fullview" type="number" placeholder="0" step="0.1"></div>
+          <div class="field"><label>50%視聴地点(秒)</label><input id="pi-halfview" type="number" placeholder="0" step="0.1"></div>
+          <div class="field"><label>離脱が多い時間(秒)</label><input id="pi-dropout" type="number" placeholder="0" step="0.1"></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+          <button class="btn btn-secondary" onclick="closePostInsightModal()">閉じる</button>
+          <button class="btn btn-primary" onclick="savePostInsight()">💾 記録する</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2072,32 +2064,38 @@ function renderAccDetail(key, tab){
     }).join('');
     const chart=videoData.length?`<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;">📊 再生数比較</div><div style="display:flex;gap:4px;align-items:flex-end;padding:8px 0;overflow-x:auto;min-height:80px;">${chartBars}</div></div>`:'';
 
-    // テーブル行生成
+    // テーブル行生成（新旧形式対応）
     const mkCells=(itemId, postType)=>{
-      const periods = postType==='organic_ad' ? ['organic','ad','1week','1month'] : ['48h','1week','1month'];
-      return periods.map(period=>{
-        const r=insightRecords[`${itemId}_${period}`];
-        const periodLabel={'48h':'48h','1week':'1週','1month':'1ヶ月','organic':'🌱広告前','ad':'📣広告後'}[period]||period;
-        if(!r)return `<td style="color:#d1d5db;text-align:center;font-size:11px;">${periodLabel}<br>—</td>`;
+      // 新形式スナップを最大3件表示
+      const snapKeys=Object.keys(insightRecords)
+        .filter(k=>k.startsWith(itemId+'_snap_'))
+        .sort((a,b)=>a.localeCompare(b));
+      // 旧形式
+      const legacyPeriods=['48h','1week','1month','organic','ad'].filter(p=>insightRecords[`${itemId}_${p}`]);
+
+      // 表示するスナップを決定（新形式優先、なければ旧形式）
+      const allSnaps=[
+        ...legacyPeriods.map(p=>({key:itemId+'_'+p,r:insightRecords[itemId+'_'+p],label:{'48h':'48h','1week':'1週','1month':'1ヶ月','organic':'🌱広告前','ad':'📣広告後'}[p]||p,isAd:p==='ad'||p.startsWith('ad_')})),
+        ...snapKeys.map(k=>({key:k,r:insightRecords[k],label:insightRecords[k].isAd?'📣'+( insightRecords[k].label||'広告中'):'🌱'+(insightRecords[k].label||''),isAd:insightRecords[k].isAd}))
+      ].slice(-4); // 最大4件
+
+      if(!allSnaps.length) return `<td colspan="3" style="color:#d1d5db;text-align:center;font-size:11px;">—</td>`;
+
+      return allSnaps.map((s,i)=>{
+        const r=s.r;
         const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):0;
-        // organic_adの場合、adとorganicが両方あれば差分表示
+        const prev=i>0?allSnaps[i-1].r:null;
         let diffHtml='';
-        if(period==='ad'){
-          const ro=insightRecords[`${itemId}_organic`];
-          if(ro&&ro.views){
-            const dv=(r.views||0)-(ro.views||0);
-            diffHtml=`<div style="color:#dc2626;font-size:9px;font-weight:700;">+${fmt(dv)} 広告効果</div>`;
-          }
+        if(prev&&prev.views&&r.views){
+          const dv=(r.views||0)-(prev.views||0);
+          if(s.isAd&&!allSnaps[i-1].isAd) diffHtml=`<div style="color:#dc2626;font-size:9px;">+${fmt(dv)} 広告</div>`;
         }
-        return `<td style="font-size:11px;line-height:1.7;text-align:center;">
-          <div style="font-size:9px;color:#9ca3af;">${periodLabel}</div>
+        return `<td style="font-size:11px;line-height:1.7;text-align:center;min-width:60px;">
+          <div style="font-size:9px;color:#9ca3af;white-space:nowrap;">${s.label}</div>
           <div><strong>${fmt(r.views||0)}</strong></div>
           <div style="color:#6d28d9;">${er}%ER</div>
-          <div style="color:#6b7280;font-size:10px;">保存${fmt(r.saves||0)}</div>
           ${diffHtml}
-          ${r.watchTime?`<div style="color:#0891b2;font-size:10px;">⏱${r.watchTime}s</div>`:''}
-          ${r.fullViewRate?`<div style="color:#059669;font-size:10px;">フル${r.fullViewRate}%</div>`:''}
-          ${r.dropoutTime?`<div style="color:#ef4444;font-size:10px;">離脱${r.dropoutTime}s</div>`:''}
+          ${r.dropoutTime?`<div style="color:#ef4444;font-size:9px;">離脱${r.dropoutTime}s</div>`:''}
         </td>`;
       }).join('');
     };
@@ -2118,7 +2116,7 @@ function renderAccDetail(key, tab){
       <td style="font-size:11px;color:#6b7280;white-space:nowrap;">${p.postDate||p.ym||'—'}<div style="font-size:10px;background:#ede9fe;color:#6d28d9;display:inline-block;padding:1px 5px;border-radius:4px;margin-top:2px;">案件</div></td>
       <td><div style="font-weight:700;font-size:13px;">${p.title}</div>
         <div style="display:flex;gap:4px;margin-top:4px;">
-          <button class="btn-sm" onclick="gotoInsight(${p.id})">📊 入力</button>
+          <button class="btn-sm" onclick="openPostInsight('${p.id}','${p.title.replace(/'/g,"\'")}','${p.type||''}')">📊 インサイット</button>
         </div>
       </td>
       ${mkCells(p.id)}
@@ -2131,19 +2129,37 @@ function renderAccDetail(key, tab){
       </div>
       ${chart}
       ${hasAny?`<div style="overflow-x:auto;"><table>
-        <thead><tr><th>投稿日</th><th>タイトル</th><th>48h</th><th>1週間</th><th>1ヶ月</th></tr></thead>
+        <thead><tr><th>投稿日</th><th>タイトル</th><th colspan="4" style="text-align:center;color:#6b7280;font-size:11px;">インサイット（スナップショット）</th></tr></thead>
         <tbody>${postRows}${projRows}</tbody>
       </table></div>`:`<div class="empty-state"><div class="big">🎬</div>投稿がまだありません<br><span style="font-size:12px;color:#9ca3af;">「＋ 投稿を追加」から登録してください</span></div>`}
     `;
   } else if(tab==='record'){
-    body=`<div id="acc-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:16px;"></div>
-      <div id="acc-ss-drop" style="border:2px dashed #d1d5db;border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;cursor:pointer;background:#fafbfc;"
+    const recentRecs=[...recs].reverse().slice(0,10);
+    const recsListHtml=recs.length?`
+      <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.3px;">📋 過去の記録（クリックで読み込み・編集）</div>
+      <div style="max-height:180px;overflow-y:auto;margin-bottom:14px;border:1px solid #e5e7eb;border-radius:8px;padding:4px 10px;">
+        ${recentRecs.map((r,i)=>{
+          const prevIdx=recs.length-1-i-1;
+          const prevR=prevIdx>=0?recs[prevIdx]:null;
+          const diff=prevR!=null?r.followers-prevR.followers:null;
+          const diffStr=diff===null?'初回':diff>=0?`<span style="color:#059669;">+${fmt(diff)}</span>`:`<span style="color:#ef4444;">▼${fmt(Math.abs(diff))}</span>`;
+          return `<div style="display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid #f3f4f6;font-size:12px;cursor:pointer;" onclick="loadAccRecordForEdit('${r.date}')">
+            <span style="color:#6b7280;min-width:80px;">${r.date}</span>
+            <span style="font-weight:700;min-width:72px;">${fmt(r.followers)}</span>
+            <span style="min-width:55px;">${diffStr}</span>
+            <span style="color:#6b7280;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${r.memo||''}</span>
+            <button class="btn-sm danger" onclick="event.stopPropagation();deleteAccountRecord('${m.name}','${r.date}')">削除</button>
+          </div>`;
+        }).join('')}
+      </div>`:'';
+    body=`${recsListHtml}
+      <div id="acc-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:6px;min-height:16px;"></div>
+      <div id="acc-ss-drop" style="border:2px dashed #d1d5db;border-radius:10px;padding:10px;text-align:center;margin-bottom:10px;cursor:pointer;background:#fafbfc;"
         onclick="document.getElementById('acc-ss-input').click()"
         ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
         ondragleave="this.style.borderColor='#d1d5db'"
         ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleAccScreenshot(event.dataTransfer.files[0])">
-        <div style="font-size:20px;">📸</div>
-        <div style="font-size:13px;font-weight:600;color:#374151;">スクショをドロップ or クリックでAI読み取り</div>
+        <div style="font-size:15px;">📸 スクショをAI読み取り</div>
         <input type="file" id="acc-ss-input" accept="image/*" style="display:none" onchange="handleAccScreenshot(this.files[0])">
       </div>
       <div class="form-grid col3">
@@ -2154,7 +2170,10 @@ function renderAccDetail(key, tab){
         <div class="field"><label>いいね合計</label><input id="acc-likes" type="number" placeholder="0"></div>
         <div class="field"><label>メモ</label><input id="acc-memo" type="text" placeholder="例: 投稿3本"></div>
       </div>
-      <div style="margin-top:12px;"><button class="btn btn-primary" onclick="saveAccountRecord()">💾 記録する</button></div>`;
+      <div style="margin-top:12px;display:flex;gap:10px;">
+        <button class="btn btn-primary" onclick="saveAccountRecord()">💾 記録する</button>
+        <button class="btn btn-secondary" onclick="clearAccRecordForm()">クリア</button>
+      </div>`;
   }
 
   out.innerHTML=header+`<div class="card" style="border-radius:0 0 12px 12px;margin-top:0;">${tabBar}${body}</div>`;
@@ -2191,7 +2210,25 @@ function showEditAccountModal(key){
   toast('更新しました');
 }
 
-function closeAccModal(){document.getElementById('acc-record-modal').style.display='none';}
+function closeAccModal(){ /* 後方互換 */ }
+
+function clearAccRecordForm(){
+  ['acc-followers','acc-views','acc-profile','acc-likes','acc-memo'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  const d=document.getElementById('acc-date');
+  if(d){d.value=new Date().toISOString().slice(0,10);delete d.dataset.editDate;}
+}
+
+function loadAccRecordForEdit(date){
+  const recs=accounts[currentAccKey]||[];
+  const r=recs.find(x=>x.date===date);if(!r)return;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  set('acc-date',r.date);set('acc-followers',r.followers);set('acc-views',r.views);
+  set('acc-profile',r.profile);set('acc-likes',r.likes);set('acc-memo',r.memo);
+  const d=document.getElementById('acc-date');if(d)d.dataset.editDate=date;
+  toast('読み込みました。編集して「記録する」を押してください');
+}
 
 // ── 独立投稿管理 ──
 let currentPostInsightId = null;
@@ -2244,65 +2281,202 @@ function deletePost(postId, accKey){
   toast('削除しました');
 }
 
+let currentPostPeriod='48h'; // 後方互換のため残す
+
 function openPostInsight(itemId, title, postType){
-  currentPostInsightId=itemId;
+  // 案件IDは数値で来る場合があるので文字列に統一
+  currentPostInsightId=String(itemId);
   const modal=document.getElementById('pi-modal');
   if(!modal)return;
   document.getElementById('pi-title').textContent=title;
+  // 今日の日付をデフォルトに
+  document.getElementById('pi-snap-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('pi-snap-label').value='';
+  document.getElementById('pi-snap-isad').checked=false;
+  clearPiInputs();
+  renderSnapList(itemId);
   document.getElementById('pi-modal').style.display='block';
-  // organic_ad なら広告前後タブを表示
-  const isAdPost = postType==='organic_ad';
-  document.getElementById('pi-tab-organic').style.display=isAdPost?'':'none';
-  document.getElementById('pi-tab-ad').style.display=isAdPost?'':'none';
-  document.getElementById('pi-ad-diff').style.display='none';
-  // 期間リセット
-  currentPostPeriod='48h';
-  document.querySelectorAll('.pi-tab').forEach(t=>t.classList.toggle('active',t.dataset.period==='48h'));
-  loadPostInsightData(itemId, '48h');
 }
 
-let currentPostPeriod='48h';
-function switchPostPeriod(period){
-  currentPostPeriod=period;
-  document.querySelectorAll('.pi-tab').forEach(t=>t.classList.toggle('active',t.dataset.period===period));
-  loadPostInsightData(currentPostInsightId, period);
-  // 広告前後が両方入力済みなら差分表示
-  const diffEl=document.getElementById('pi-ad-diff');
-  if(diffEl&&(period==='organic'||period==='ad')){
-    const ro=insightRecords[currentPostInsightId+'_organic'];
-    const ra=insightRecords[currentPostInsightId+'_ad'];
-    if(ro&&ra){
-      const dv=(ra.views||0)-(ro.views||0);
-      const dl=(ra.likes||0)-(ro.likes||0);
-      const df=(ra.followers||0)-(ro.followers||0);
-      diffEl.style.display='';
-      diffEl.innerHTML=`<strong>📣 広告効果</strong>　再生 <strong style="color:#dc2626;">+${fmt(dv)}</strong>　いいね <strong style="color:#dc2626;">+${fmt(dl)}</strong>　フォロワー <strong style="color:#059669;">+${fmt(df)}</strong>`;
-    } else {
-      diffEl.style.display='none';
-    }
-  } else if(diffEl){
-    diffEl.style.display='none';
-  }
+function clearPiInputs(){
+  ['pi-views','pi-likes','pi-comments','pi-shares','pi-saves','pi-followers','pi-profile','pi-watchtime','pi-fullview','pi-halfview','pi-dropout'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
 }
-function loadPostInsightData(itemId, period){
-  const r=insightRecords[`${itemId}_${period}`]||{};
+
+function renderSnapList(itemId){
+  const wrap=document.getElementById('pi-snap-list');
+  if(!wrap)return;
+  // 新形式スナップ: snap_で始まるkey
+  const snapKeys=Object.keys(insightRecords)
+    .filter(k=>k.startsWith(String(itemId)+'_snap_'))
+    .sort((a,b)=>a.localeCompare(b));
+  // 旧形式: 48h/1week/1month/organic/ad
+  const legacyPeriods=['48h','1week','1month','organic','ad'];
+  const legacyKeys=legacyPeriods.filter(p=>insightRecords[itemId+'_'+p]);
+
+  if(!snapKeys.length && !legacyKeys.length){
+    wrap.innerHTML='<div style="font-size:12px;color:#9ca3af;margin-bottom:8px;">まだ記録がありません。下から最初のスナップショットを追加してください。</div>';
+    return;
+  }
+
+  const labelMap={
+    '48h':'48時間後','1week':'1週間後','1month':'1ヶ月後',
+    'organic':'広告前','ad':'広告後',
+    'ad_start':'広告開始直前','ad_3day':'広告3日後','ad_1week':'広告1週間後','ad_end':'広告終了後'
+  };
+  const adColor='background:#fee2e2;color:#991b1b;';
+  const orgColor='background:#dcfce7;color:#166534;';
+
+  let html='<div style="margin-bottom:12px;">';
+
+  // 旧形式スナップを表示（編集・削除可）
+  legacyKeys.forEach(p=>{
+    const r=insightRecords[itemId+'_'+p];
+    const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):'—';
+    const isAd=p==='ad'||p.startsWith('ad_');
+    const badgeStyle=isAd?adColor:p==='organic'?orgColor:'background:#ede9fe;color:#4c1d95;';
+    html+=`<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;${badgeStyle}">${labelMap[p]||p}</span>
+      <span style="font-size:11px;color:#6b7280;">${r.savedAt?r.savedAt.slice(0,10):''}</span>
+      <span style="font-size:12px;font-weight:700;">再生 ${fmt(r.views||0)}</span>
+      <span style="font-size:12px;color:#6d28d9;">ER ${er}%</span>
+      <span style="font-size:11px;color:#6b7280;">保存 ${fmt(r.saves||0)}</span>
+      ${r.watchTime?`<span style="font-size:11px;color:#0891b2;">⏱ ${r.watchTime}s</span>`:''}
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button class="btn-sm" onclick="editLegacySnap('${itemId}','${p}')">✏️ 編集</button>
+        <button class="btn-sm danger" onclick="deleteSnap('${itemId}','${p}',true)">削除</button>
+      </div>
+    </div>`;
+  });
+
+  // 新形式スナップを時系列で表示
+  let prevSnap=null;
+  snapKeys.forEach((key,i)=>{
+    const r=insightRecords[key];
+    const snapId=key.replace(itemId+'_snap_','');
+    const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):'—';
+    const isAd=r.isAd;
+    const badgeStyle=isAd?adColor:orgColor;
+    const label=r.label?labelMap[r.label]||r.label:'スナップ'+(i+1);
+
+    // 前スナップとの差分
+    let diffHtml='';
+    if(prevSnap&&prevSnap.views&&r.views){
+      const dv=(r.views||0)-(prevSnap.views||0);
+      const df=(r.followers||0)-(prevSnap.followers||0);
+      const sign=dv>=0?'+':'';
+      const adLabel=(isAd&&!prevSnap.isAd)?'📣広告効果 ':'';
+      diffHtml=`<span style="font-size:11px;color:${dv>=0?'#059669':'#dc2626'};margin-left:4px;">${adLabel}再生${sign}${fmt(dv)} / フォロワー${df>=0?'+':''}${fmt(df)}</span>`;
+    }
+    prevSnap=r;
+
+    html+=`<div style="border:1px solid ${isAd?'#fca5a5':'#e5e7eb'};border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;${badgeStyle}">${isAd?'📣 ':'🌱 '}${label}</span>
+      <span style="font-size:11px;color:#6b7280;">${r.date||''}</span>
+      <span style="font-size:12px;font-weight:700;">再生 ${fmt(r.views||0)}</span>
+      <span style="font-size:12px;color:#6d28d9;">ER ${er}%</span>
+      <span style="font-size:11px;color:#6b7280;">保存 ${fmt(r.saves||0)}</span>
+      ${r.watchTime?`<span style="font-size:11px;color:#0891b2;">⏱ ${r.watchTime}s</span>`:''}
+      ${diffHtml}
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button class="btn-sm" onclick="editSnap('${itemId}','${snapId}')">✏️ 編集</button>
+        <button class="btn-sm danger" onclick="deleteSnap('${itemId}','${snapId}',false)">削除</button>
+      </div>
+    </div>`;
+  });
+
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+
+function editSnap(itemId, snapId){
+  const key=itemId+'_snap_'+snapId;
+  const r=insightRecords[key];if(!r)return;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  document.getElementById('pi-snap-date').value=r.date||'';
+  document.getElementById('pi-snap-label').value=r.label||'';
+  document.getElementById('pi-snap-isad').checked=!!r.isAd;
   set('pi-views',r.views);set('pi-likes',r.likes);set('pi-comments',r.comments);
   set('pi-shares',r.shares);set('pi-saves',r.saves);set('pi-followers',r.followers);
   set('pi-profile',r.profileClicks);set('pi-watchtime',r.watchTime);
   set('pi-fullview',r.fullViewRate);set('pi-halfview',r.halfViewRate);set('pi-dropout',r.dropoutTime);
+  // 編集中IDをマーク
+  document.getElementById('pi-snap-date').dataset.editSnapId=snapId;
+  toast('数値を読み込みました。編集して「記録する」を押してください');
 }
-function savePostInsight(){
-  const itemId=currentPostInsightId;if(!itemId)return;
-  const get=(id)=>+document.getElementById(id)?.value||0;
-  const vals={views:get('pi-views'),likes:get('pi-likes'),comments:get('pi-comments'),shares:get('pi-shares'),saves:get('pi-saves'),followers:get('pi-followers'),profileClicks:get('pi-profile'),watchTime:get('pi-watchtime'),fullViewRate:get('pi-fullview'),halfViewRate:get('pi-halfview'),dropoutTime:get('pi-dropout'),savedAt:new Date().toISOString()};
-  insightRecords[`${itemId}_${currentPostPeriod}`]=vals;
+
+function editLegacySnap(itemId, period){
+  const r=insightRecords[itemId+'_'+period];if(!r)return;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  const labelMap={'48h':'48h','1week':'1week','1month':'1month','organic':'ad_start','ad':'ad_end'};
+  document.getElementById('pi-snap-date').value=r.savedAt?r.savedAt.slice(0,10):new Date().toISOString().slice(0,10);
+  document.getElementById('pi-snap-label').value=labelMap[period]||'';
+  document.getElementById('pi-snap-isad').checked=period==='ad'||period.startsWith('ad_');
+  document.getElementById('pi-snap-date').dataset.editLegacyPeriod=period;
+  set('pi-views',r.views);set('pi-likes',r.likes);set('pi-comments',r.comments);
+  set('pi-shares',r.shares);set('pi-saves',r.saves);set('pi-followers',r.followers);
+  set('pi-profile',r.profileClicks);set('pi-watchtime',r.watchTime);
+  set('pi-fullview',r.fullViewRate);set('pi-halfview',r.halfViewRate);set('pi-dropout',r.dropoutTime);
+  toast('旧形式データを読み込みました。編集して「記録する」を押してください');
+}
+
+function deleteSnap(itemId, keyOrPeriod, isLegacy){
+  if(!confirm('このスナップショットを削除しますか？'))return;
+  const fullKey=isLegacy?itemId+'_'+keyOrPeriod:itemId+'_snap_'+keyOrPeriod;
+  delete insightRecords[fullKey];
   localStorage.setItem('vop_insight_records',JSON.stringify(insightRecords));
   gasSave();
-  toast(`${currentPostPeriod} のデータを保存しました`);
+  renderSnapList(itemId);
   renderAccDetail(currentAccKey,'posts');
+  toast('削除しました');
 }
+
+function savePostInsight(){
+  const itemId=String(currentPostInsightId);if(!itemId||itemId==='null')return;
+  const get=(id)=>+document.getElementById(id)?.value||0;
+  const dateEl=document.getElementById('pi-snap-date');
+  const date=dateEl.value||new Date().toISOString().slice(0,10);
+  const label=document.getElementById('pi-snap-label').value;
+  const isAd=document.getElementById('pi-snap-isad').checked;
+  const editSnapId=dateEl.dataset.editSnapId||'';
+  const editLegacyPeriod=dateEl.dataset.editLegacyPeriod||'';
+
+  const vals={
+    date, label, isAd,
+    views:get('pi-views'),likes:get('pi-likes'),comments:get('pi-comments'),
+    shares:get('pi-shares'),saves:get('pi-saves'),followers:get('pi-followers'),
+    profileClicks:get('pi-profile'),watchTime:get('pi-watchtime'),
+    fullViewRate:get('pi-fullview'),halfViewRate:get('pi-halfview'),dropoutTime:get('pi-dropout'),
+    savedAt:new Date().toISOString()
+  };
+
+  if(editLegacyPeriod){
+    // 旧形式キーを上書き（互換維持）
+    insightRecords[itemId+'_'+editLegacyPeriod]={...vals, savedAt:vals.savedAt};
+    delete dateEl.dataset.editLegacyPeriod;
+  } else {
+    // 新形式：編集中なら同じID、新規なら timestamp
+    const snapId=editSnapId||date+'_'+Date.now();
+    insightRecords[itemId+'_snap_'+snapId]=vals;
+    delete dateEl.dataset.editSnapId;
+  }
+
+  localStorage.setItem('vop_insight_records',JSON.stringify(insightRecords));
+  gasSave();
+  clearPiInputs();
+  document.getElementById('pi-snap-label').value='';
+  document.getElementById('pi-snap-isad').checked=false;
+  renderSnapList(itemId);
+  renderAccDetail(currentAccKey,'posts');
+  toast('スナップショットを保存しました');
+}
+
 function closePostInsightModal(){document.getElementById('pi-modal').style.display='none';}
+
+// 後方互換: switchPostPeriod は残すが何もしない
+function switchPostPeriod(period){ currentPostPeriod=period; }
+function loadPostInsightData(itemId, period){}
 
 function showAddAccountModal(){
   const sel=document.getElementById('acc-new-client');
@@ -2401,17 +2575,6 @@ function renderAccountStats(name){
   const diff=(latest&&prev)?latest.followers-prev.followers:0;
   const maxF=Math.max(...recs.map(r=>r.followers),1);
 
-  // フォロワーグラフ（投稿日マーカー付き）
-  const barsHtml=recs.slice(-30).map(r=>{
-    const hasPost=postDates.has(r.date);
-    const postTitles=linkedProjects.filter(p=>p.postDate===r.date).map(p=>p.title).join(', ');
-    return `<div class="fc-bar-wrap">
-      ${hasPost?`<span class="post-marker" title="${postTitles}">🎬</span><span class="post-marker-label">${postTitles}</span>`:''}
-      <div class="fc-bar${hasPost?' has-post':''}" style="height:${Math.round(r.followers/maxF*110)}px;"></div>
-      <div class="fc-label">${r.date.slice(5)}</div>
-    </div>`;
-  }).join('');
-
   // サマリ数値
   const statsHtml=latest?`
     <div class="stats-grid">
@@ -2421,16 +2584,56 @@ function renderAccountStats(name){
       <div class="stat-card"><div class="slabel">紐づき動画数</div><div class="sval pink">${linkedProjects.length}本</div></div>
     </div>`:'';
 
-  // フォロワー推移グラフ
-  const chartHtml=recs.length?`
-    <div class="card">
-      <div class="sec">フォロワー推移 <span style="font-size:11px;font-weight:400;color:#9ca3af;">（🎬 = 動画投稿日）</span></div>
-      <div class="follower-chart">${barsHtml}</div>
-      <div class="chart-legend">
-        <span><span class="dot" style="background:linear-gradient(#6d28d9,#a78bfa);"></span>通常</span>
-        <span><span class="dot" style="background:linear-gradient(#e8305a,#f472b6);"></span>動画投稿日</span>
+  // フォロワー推移 SVG折れ線グラフ
+  const chartHtml=(()=>{
+    const plotRecs=recs.slice(-30);
+    if(!plotRecs.length) return '';
+    const W=560,H=140,PAD=10,LPAD=52,BPAD=22;
+    const iW=W-LPAD-PAD, iH=H-PAD-BPAD;
+    const minF=Math.min(...plotRecs.map(r=>r.followers));
+    const maxFF=Math.max(...plotRecs.map(r=>r.followers),minF+1);
+    const range=maxFF-minF||1;
+    const toX=(i)=>LPAD+i*(iW/(plotRecs.length-1||1));
+    const toY=(v)=>PAD+iH-(iH*(v-minF)/range);
+    const yTicks=[minF,Math.round((minF+maxFF)/2),maxFF];
+    const yTicksHtml=yTicks.map(v=>`<text x="${LPAD-6}" y="${toY(v)+4}" text-anchor="end" font-size="10" fill="#9ca3af">${fmt(v)}</text>`).join('');
+    const yGridHtml=yTicks.map(v=>`<line x1="${LPAD}" y1="${toY(v)}" x2="${W-PAD}" y2="${toY(v)}" stroke="#f3f4f6" stroke-width="1"/>`).join('');
+    const pts=plotRecs.map((r,i)=>({x:toX(i),y:toY(r.followers),r,i}));
+    const linePath='M'+pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L');
+    const areaPath=linePath+`L${pts[pts.length-1].x.toFixed(1)},${(PAD+iH).toFixed(1)}L${LPAD},${(PAD+iH).toFixed(1)}Z`;
+    const dotsHtml=pts.map((p,i)=>{
+      const hasPost=postDates.has(p.r.date);
+      const prevF=i>0?plotRecs[i-1].followers:p.r.followers;
+      const rising=p.r.followers>=prevF;
+      const dotC=hasPost?'#e8305a':rising?'#6d28d9':'#f59e0b';
+      const diff2=i>0?p.r.followers-plotRecs[i-1].followers:null;
+      const showDiff=diff2!==null&&(i===pts.length-1||hasPost)&&diff2!==0;
+      const diffBadge=showDiff?`<text x="${p.x.toFixed(1)}" y="${(p.y-14).toFixed(1)}" text-anchor="middle" font-size="9" fill="${diff2>=0?'#059669':'#ef4444'}" font-weight="bold">${diff2>=0?'+':''}${fmt(diff2)}</text>`:'';
+      const postTitle=hasPost?linkedProjects.filter(pp=>pp.postDate===p.r.date).map(pp=>pp.title).join(', '):'';
+      const showLabel=(i%(Math.ceil(pts.length/7))===0||i===pts.length-1);
+      const labelHtml=showLabel?`<text x="${p.x.toFixed(1)}" y="${(PAD+iH+14).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9ca3af">${p.r.date.slice(5)}</text>`:'';
+      const postEmoji=hasPost?`<text x="${p.x.toFixed(1)}" y="${(p.y-8).toFixed(1)}" text-anchor="middle" font-size="11">🎬</text><title>${postTitle}</title>`:'';
+      return `${diffBadge}<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${hasPost?5:3}" fill="${dotC}" stroke="white" stroke-width="1.5"/>${postEmoji}${labelHtml}`;
+    }).join('');
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="sec" style="margin:0;">フォロワー推移</div>
+        <div style="font-size:11px;color:#9ca3af;display:flex;gap:10px;">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6d28d9;margin-right:3px;"></span>増加</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:3px;"></span>減少</span>
+          <span>🎬 投稿日</span>
+        </div>
       </div>
-    </div>`:'';
+      <svg width="100%" viewBox="0 0 ${W} ${H}" style="overflow:visible;">
+        <defs><linearGradient id="fg-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6d28d9" stop-opacity="0.12"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0.01"/></linearGradient></defs>
+        ${yGridHtml}
+        <path d="${areaPath}" fill="url(#fg-grad)" stroke="none"/>
+        <path d="${linePath}" fill="none" stroke="#6d28d9" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        ${yTicksHtml}
+        ${dotsHtml}
+      </svg>
+    </div>`;
+  })()
 
   // 紐づき動画インサイト一覧
   const pColors={'48h':'badge-pink','1week':'badge-purple','1month':'badge-blue'};
@@ -2445,7 +2648,9 @@ function renderAccountStats(name){
     }).join('');
     return `<tr>
       <td><span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.postDate||p.ym||'—'}</span></td>
-      <td><strong style="font-size:13px;">${p.title}</strong><div style="font-size:11px;color:#9ca3af;">${typeLabels[p.type]||''}</div></td>
+      <td><strong style="font-size:13px;">${p.title}</strong><div style="font-size:11px;color:#9ca3af;">${typeLabels[p.type]||''}</div>
+        <button class="btn-sm" style="margin-top:4px;" onclick="openPostInsight('${p.id}','${p.title.replace(/'/g,"\'")}','${p.type||''}')">📊 入力</button>
+      </td>
       ${insightCells}
     </tr>`;
   }).join('');
@@ -2712,13 +2917,14 @@ function renderEditorOrders(){
   if(!orders.length){card.style.display='none';tbody.innerHTML='';return;}
   card.style.display='';
   tbody.innerHTML=orders.map(o=>`<tr>
-    <td style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${o.ym||'—'}</td>
+    <td style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${o.ym||'—'}${o.carriedFrom?`<br><span style="font-size:10px;color:#6d28d9;">↩ ${o.carriedFrom}繰越</span>`:''}</td>
     <td><strong>${o.title||'—'}</strong>${o.memo?`<br><span style="font-size:11px;color:#9ca3af;">${o.memo}</span>`:''}</td>
     <td>¥${fmt(o.price||0)}</td>
     <td>${o.count||1}本</td>
     <td><strong>¥${fmt((o.price||0)*(o.count||1))}</strong></td>
     <td><span class="badge ${o.status==='paid'?'badge-green':'badge-orange'}" style="cursor:pointer;" onclick="toggleOrderPaid(${o.id})">${o.status==='paid'?'支払済み':'未払い'}</span></td>
     <td class="table-actions">
+      ${o.status!=='paid'?`<button class="btn-sm" onclick="carryOverOrder(${o.id})" title="翌月へ繰越">↩ 繰越</button>`:''}
       <button class="btn-sm danger" onclick="deleteOrder(${o.id})">削除</button>
     </td></tr>`).join('');
 }
@@ -2734,6 +2940,21 @@ function deleteOrder(id){
   editorOrders=editorOrders.filter(x=>x.id!==id);
   localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
   renderEditorOrders(); toast('削除しました');
+}
+
+function carryOverOrder(id){
+  const o=editorOrders.find(x=>x.id===id);if(!o)return;
+  // 翌月のymを計算
+  const [y,m]=(o.ym||new Date().toISOString().slice(0,7)).split('-').map(Number);
+  const nextYm=`${m===12?y+1:y}-${String(m===12?1:m+1).padStart(2,'0')}`;
+  if(!confirm(`「${o.title}」を ${nextYm} に繰り越しますか？`))return;
+  // 元の記録を削除し、翌月分として新規追加
+  const newOrder={...o,id:Date.now(),ym:nextYm,carriedFrom:o.ym||'前月',memo:(o.memo||'')+' [繰越]',status:'unpaid',createdAt:new Date().toISOString()};
+  editorOrders=editorOrders.filter(x=>x.id!==id);
+  editorOrders.push(newOrder);
+  localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
+  renderEditorMonthFilter();renderEditorOrders();
+  toast(`${nextYm} に繰り越しました`);
 }
 
 function showAddEditorModal(){ document.getElementById('modal-editor').style.display='flex'; setTimeout(()=>document.getElementById('ed-name').focus(),50); }

@@ -1023,6 +1023,7 @@ if(!castMaster.length) {
 }
 
 let castCount = 5;
+let currentEditingProjectId = null;
 let currentPeriod = '48h';
 let currentFilingClient = 'all';
 let currentInsightProjectId = null;
@@ -1334,18 +1335,34 @@ function saveProject(){
     const matched = accNames.find(n => n === proj.client || proj.client.includes(n) || n.includes(proj.client));
     if(matched) proj.accountName = matched;
   }
-  projects.unshift(proj);
-  localStorage.setItem('vop_projects',JSON.stringify(projects));
-  syncToGAS(proj);
-  gasSave();
-  toast('案件を保存しました ✓');
-  if(proj.assignedEditor) triggerAutoOrder(proj);
+  if(currentEditingProjectId){
+    const idx = projects.findIndex(x => x.id === currentEditingProjectId);
+    if(idx !== -1){
+      proj.id = currentEditingProjectId;
+      proj.createdAt = projects[idx].createdAt;
+      projects[idx] = proj;
+    } else {
+      projects.unshift(proj);
+    }
+    currentEditingProjectId = null;
+    localStorage.setItem('vop_projects',JSON.stringify(projects));
+    renderFilingClientTabs(); renderFiling();
+    syncToGAS(proj); gasSave();
+    toast('案件を更新しました ✓');
+  } else {
+    projects.unshift(proj);
+    localStorage.setItem('vop_projects',JSON.stringify(projects));
+    syncToGAS(proj); gasSave();
+    toast('案件を保存しました ✓');
+    if(proj.assignedEditor) triggerAutoOrder(proj);
+  }
 }
 
 function clearForm(){
   ['f-title','f-shop','f-edit-notes','f-special','f-intro-text','f-remarks','f-talent','f-product','f-materials','f-brand','f-duration','f-narration'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   setUrlList('ref-videos-list',[]);setUrlList('style-folders-list',[]);setUrlList('past-folders-list',[]);setUrlList('material-folders-list',[]);setUrlList('output-folders-list',[]);
   castCount=5;renderCastList();updatePreview();
+  currentEditingProjectId = null;
 }
 
 // ── FILING ──
@@ -1409,6 +1426,7 @@ function loadProject(id){
   castCount=Math.max(p.cast?.length||0,1); renderCastList();
   if(p.cast)p.cast.forEach((c,i)=>{const ni=document.getElementById(`cast-name-${i+1}`);const di=document.getElementById(`cast-id-${i+1}`);if(ni)ni.value=c.name||'';if(di)di.value=c.handle||'';});
   updatePreview();
+  currentEditingProjectId = id;
   goto(document.querySelector('[data-page=new]'),'new');
   toast('案件を読み込みました');
 }

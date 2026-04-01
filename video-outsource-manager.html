@@ -1469,7 +1469,10 @@ function saveProject(){
 function clearForm(){
   ['f-title','f-shop','f-edit-notes','f-special','f-intro-text','f-remarks','f-talent','f-product','f-materials','f-brand','f-duration','f-narration'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   setUrlList('ref-videos-list',[]);setUrlList('style-folders-list',[]);setUrlList('past-folders-list',[]);setUrlList('material-folders-list',[]);setUrlList('output-folders-list',[]);
-  castCount=5;renderCastList();updatePreview();
+  castCount=5;renderCastList();
+  renderClientSelect();
+  const cl=document.getElementById('f-client');if(cl)cl.value='';
+  updatePreview();
   currentEditingProjectId = null;
 }
 
@@ -1529,7 +1532,9 @@ function loadProject(id){
   onWorktypeChange();
   renderFormEditorSelect();
   document.getElementById('f-editor').value=p.assignedEditor||'';
-  document.getElementById('f-type').value=p.type||'cabaret'; document.getElementById('f-client').value=p.client||'';
+  document.getElementById('f-type').value=p.type||'cabaret';
+  renderClientSelect();
+  document.getElementById('f-client').value=p.client||'';
   document.getElementById('f-shop').value=p.shop||''; document.getElementById('f-edit-notes').value=p.editNotes||'';
   document.getElementById('f-special').value=p.special||''; document.getElementById('f-intro-text').value=p.introText||'';
   document.getElementById('f-font').value=p.font||''; document.getElementById('f-telop-style').value=p.telopStyle||'';

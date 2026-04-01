@@ -1874,7 +1874,7 @@ async function handleInsightScreenshot(file){
 
 async function handleAccScreenshot(file){
   if(!file||!file.type.startsWith('image/'))return;
-  const statusEl=document.getElementById('acc-ss-status');
+  const statusEl=(document.getElementById('account-stats-output')||document).querySelector('#acc-ss-status')||document.getElementById('acc-ss-status');
   if(!GAS_URL){
     statusEl.textContent='⚙️ GAS URLが未設定です。サイドバーの「⚙️ GAS URL設定」でURLを登録してください。';
     statusEl.style.color='#d97706';
@@ -2173,7 +2173,42 @@ function renderAccDetail(key, tab){
       <div style="margin-top:12px;display:flex;gap:10px;">
         <button class="btn btn-primary" onclick="saveAccountRecord()">💾 記録する</button>
         <button class="btn btn-secondary" onclick="clearAccRecordForm()">クリア</button>
-      </div>`;
+      </div>
+      ${recs.length?`
+      <div style="margin-top:20px;">
+        <div style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:8px;letter-spacing:.3px;">📊 アカウントデータ記録</div>
+        <div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr style="background:#f9fafb;">
+              <th style="padding:8px 12px;text-align:left;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">日付</th>
+              <th style="padding:8px 12px;text-align:right;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">フォロワー</th>
+              <th style="padding:8px 12px;text-align:right;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">増減</th>
+              <th style="padding:8px 12px;text-align:right;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">再生数</th>
+              <th style="padding:8px 12px;text-align:right;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">プロフ訪問</th>
+              <th style="padding:8px 12px;text-align:right;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">いいね</th>
+              <th style="padding:8px 12px;text-align:left;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">メモ</th>
+              <th style="padding:8px 12px;border-bottom:1px solid #e5e7eb;"></th>
+            </tr></thead>
+            <tbody>
+              ${[...recs].reverse().slice(0,15).map((r,i,arr)=>{
+                const prevR=i<arr.length-1?arr[i+1]:null;
+                const diff=prevR!=null?r.followers-prevR.followers:null;
+                const diffStr=diff===null?'':diff===0?'—':diff>0?`<span style="color:#059669;font-weight:700;">+${fmt(diff)}</span>`:`<span style="color:#ef4444;font-weight:700;">▼${fmt(Math.abs(diff))}</span>`;
+                return `<tr style="border-bottom:1px solid #f3f4f6;cursor:pointer;" onclick="loadAccRecordForEdit('${r.date}')">
+                  <td style="padding:8px 12px;font-family:monospace;color:#6b7280;">${r.date}</td>
+                  <td style="padding:8px 12px;text-align:right;font-weight:700;">${fmt(r.followers||0)}</td>
+                  <td style="padding:8px 12px;text-align:right;">${diffStr}</td>
+                  <td style="padding:8px 12px;text-align:right;color:#6b7280;">${fmt(r.views||0)}</td>
+                  <td style="padding:8px 12px;text-align:right;color:#6b7280;">${fmt(r.profile||0)}</td>
+                  <td style="padding:8px 12px;text-align:right;color:#6b7280;">${fmt(r.likes||0)}</td>
+                  <td style="padding:8px 12px;color:#9ca3af;">${r.memo||'—'}</td>
+                  <td style="padding:8px 12px;"><button class="btn-sm danger" onclick="event.stopPropagation();deleteAccountRecord('${m.name}','${r.date}')">削除</button></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`:''}`;
   }
 
   out.innerHTML=header+`<div class="card" style="border-radius:0 0 12px 12px;margin-top:0;">${tabBar}${body}</div>`;
@@ -2213,20 +2248,22 @@ function showEditAccountModal(key){
 function closeAccModal(){ /* 後方互換 */ }
 
 function clearAccRecordForm(){
+  const ctx=document.getElementById('account-stats-output')||document;
   ['acc-followers','acc-views','acc-profile','acc-likes','acc-memo'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.value='';
+    const el=ctx.querySelector('#'+id)||document.getElementById(id);if(el)el.value='';
   });
-  const d=document.getElementById('acc-date');
+  const d=ctx.querySelector('#acc-date')||document.getElementById('acc-date');
   if(d){d.value=new Date().toISOString().slice(0,10);delete d.dataset.editDate;}
 }
 
 function loadAccRecordForEdit(date){
   const recs=accounts[currentAccKey]||[];
   const r=recs.find(x=>x.date===date);if(!r)return;
-  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
-  set('acc-date',r.date);set('acc-followers',r.followers);set('acc-views',r.views);
-  set('acc-profile',r.profile);set('acc-likes',r.likes);set('acc-memo',r.memo);
-  const d=document.getElementById('acc-date');if(d)d.dataset.editDate=date;
+  const ctx=document.getElementById('account-stats-output')||document;
+  const set=(id,v)=>{const el=ctx.querySelector('#'+id)||document.getElementById(id);if(el)el.value=v??'';};
+  set('acc-date',r.date);set('acc-followers',r.followers||'');set('acc-views',r.views||'');
+  set('acc-profile',r.profile||'');set('acc-likes',r.likes||'');set('acc-memo',r.memo||'');
+  const d=ctx.querySelector('#acc-date')||document.getElementById('acc-date');if(d)d.dataset.editDate=date;
   toast('読み込みました。編集して「記録する」を押してください');
 }
 
@@ -2541,14 +2578,17 @@ function saveAccountRecord(){
   const m=accountMeta[key]||{};
   const name=m.name||(key.split('__')[0]);
   const sns=m.sns||currentSNSTab;
-  const rec={date:document.getElementById('acc-date').value||new Date().toISOString().slice(0,10),sns,followers:+document.getElementById('acc-followers').value||0,views:+document.getElementById('acc-views').value||0,profile:+document.getElementById('acc-profile').value||0,likes:+document.getElementById('acc-likes').value||0,memo:document.getElementById('acc-memo').value,savedAt:new Date().toISOString()};
+  // account-stats-output 内から取得（innerHTML注入後も確実に動く）
+  const ctx=document.getElementById('account-stats-output')||document;
+  const gv=(id)=>{const el=ctx.querySelector('#'+id)||document.getElementById(id);return el?el.value:'';}
+  const rec={date:gv('acc-date')||new Date().toISOString().slice(0,10),sns,followers:+gv('acc-followers')||0,views:+gv('acc-views')||0,profile:+gv('acc-profile')||0,likes:+gv('acc-likes')||0,memo:gv('acc-memo'),savedAt:new Date().toISOString()};
   if(!accounts[key])accounts[key]=[];
   const idx=accounts[key].findIndex(r=>r.date===rec.date);
   if(idx>=0)accounts[key][idx]=rec;else accounts[key].push(rec);
   accounts[key].sort((a,b)=>a.date>b.date?1:-1);
   localStorage.setItem('vop_accounts',JSON.stringify(accounts));
   renderAccountList();
-  renderAccDetail(currentAccKey,'stats');
+  renderAccDetail(currentAccKey,'record');
   toast('記録しました ✓');
   gasSave();
 }

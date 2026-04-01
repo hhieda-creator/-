@@ -720,11 +720,14 @@ tr:hover td { background: #fafbff; }
         <div style="font-size:15px;font-weight:800;color:#111827;">📊 <span id="pi-title"></span></div>
         <button onclick="closePostInsightModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">✕</button>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
         <button class="pi-tab ttab active" data-period="48h" onclick="switchPostPeriod('48h')">48時間</button>
         <button class="pi-tab ttab" data-period="1week" onclick="switchPostPeriod('1week')">1週間</button>
         <button class="pi-tab ttab" data-period="1month" onclick="switchPostPeriod('1month')">1ヶ月</button>
+        <button class="pi-tab ttab" data-period="organic" onclick="switchPostPeriod('organic')" id="pi-tab-organic" style="display:none;background:#dcfce7;color:#059669;border-color:#86efac;">🌱 広告前</button>
+        <button class="pi-tab ttab" data-period="ad" onclick="switchPostPeriod('ad')" id="pi-tab-ad" style="display:none;background:#fee2e2;color:#dc2626;border-color:#fca5a5;">📣 広告後</button>
       </div>
+      <div id="pi-ad-diff" style="display:none;margin-bottom:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;font-size:12px;"></div>
       <div class="form-grid col3">
         <div class="field"><label>再生数</label><input id="pi-views" type="number" placeholder="0"></div>
         <div class="field"><label>いいね数</label><input id="pi-likes" type="number" placeholder="0"></div>
@@ -2070,15 +2073,28 @@ function renderAccDetail(key, tab){
     const chart=videoData.length?`<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;">📊 再生数比較</div><div style="display:flex;gap:4px;align-items:flex-end;padding:8px 0;overflow-x:auto;min-height:80px;">${chartBars}</div></div>`:'';
 
     // テーブル行生成
-    const mkCells=(itemId)=>{
-      return ['48h','1week','1month'].map(period=>{
+    const mkCells=(itemId, postType)=>{
+      const periods = postType==='organic_ad' ? ['organic','ad','1week','1month'] : ['48h','1week','1month'];
+      return periods.map(period=>{
         const r=insightRecords[`${itemId}_${period}`];
-        if(!r)return `<td style="color:#d1d5db;text-align:center;font-size:12px;">—</td>`;
+        const periodLabel={'48h':'48h','1week':'1週','1month':'1ヶ月','organic':'🌱広告前','ad':'📣広告後'}[period]||period;
+        if(!r)return `<td style="color:#d1d5db;text-align:center;font-size:11px;">${periodLabel}<br>—</td>`;
         const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):0;
+        // organic_adの場合、adとorganicが両方あれば差分表示
+        let diffHtml='';
+        if(period==='ad'){
+          const ro=insightRecords[`${itemId}_organic`];
+          if(ro&&ro.views){
+            const dv=(r.views||0)-(ro.views||0);
+            diffHtml=`<div style="color:#dc2626;font-size:9px;font-weight:700;">+${fmt(dv)} 広告効果</div>`;
+          }
+        }
         return `<td style="font-size:11px;line-height:1.7;text-align:center;">
+          <div style="font-size:9px;color:#9ca3af;">${periodLabel}</div>
           <div><strong>${fmt(r.views||0)}</strong></div>
           <div style="color:#6d28d9;">${er}%ER</div>
           <div style="color:#6b7280;font-size:10px;">保存${fmt(r.saves||0)}</div>
+          ${diffHtml}
           ${r.watchTime?`<div style="color:#0891b2;font-size:10px;">⏱${r.watchTime}s</div>`:''}
           ${r.fullViewRate?`<div style="color:#059669;font-size:10px;">フル${r.fullViewRate}%</div>`:''}
           ${r.dropoutTime?`<div style="color:#ef4444;font-size:10px;">離脱${r.dropoutTime}s</div>`:''}
@@ -2091,11 +2107,11 @@ function renderAccDetail(key, tab){
       <td style="font-size:11px;color:#6b7280;white-space:nowrap;">${p.postDate||'—'}<br>${ptBadge[p.postType||'organic']||ptBadge.organic}</td>
       <td><div style="font-weight:700;font-size:13px;">${p.title}</div>
         <div style="display:flex;gap:4px;margin-top:4px;">
-          <button class="btn-sm" onclick="openPostInsight('post_${p.id}','${p.title.replace(/'/g,"\'")}')">📊 入力</button>
+          <button class="btn-sm" onclick="openPostInsight('post_${p.id}','${p.title.replace(/'/g,"\'")}','${p.postType||'organic'}')">📊 入力</button>
           <button class="btn-sm danger" onclick="deletePost('${p.id}','${key}')">削除</button>
         </div>
       </td>
-      ${mkCells('post_'+p.id)}
+      ${mkCells('post_'+p.id, p.postType)}
     </tr>`).join('');
 
     const projRows=linkedProj.map(p=>`<tr>
@@ -2228,15 +2244,21 @@ function deletePost(postId, accKey){
   toast('削除しました');
 }
 
-function openPostInsight(itemId, title){
-  // インサイット入力モーダルを表示
+function openPostInsight(itemId, title, postType){
   currentPostInsightId=itemId;
   const modal=document.getElementById('pi-modal');
   if(!modal)return;
   document.getElementById('pi-title').textContent=title;
   document.getElementById('pi-modal').style.display='block';
-  // 既存データ読み込み（現在の期間）
-  loadPostInsightData(itemId, currentPostPeriod);
+  // organic_ad なら広告前後タブを表示
+  const isAdPost = postType==='organic_ad';
+  document.getElementById('pi-tab-organic').style.display=isAdPost?'':'none';
+  document.getElementById('pi-tab-ad').style.display=isAdPost?'':'none';
+  document.getElementById('pi-ad-diff').style.display='none';
+  // 期間リセット
+  currentPostPeriod='48h';
+  document.querySelectorAll('.pi-tab').forEach(t=>t.classList.toggle('active',t.dataset.period==='48h'));
+  loadPostInsightData(itemId, '48h');
 }
 
 let currentPostPeriod='48h';
@@ -2244,6 +2266,23 @@ function switchPostPeriod(period){
   currentPostPeriod=period;
   document.querySelectorAll('.pi-tab').forEach(t=>t.classList.toggle('active',t.dataset.period===period));
   loadPostInsightData(currentPostInsightId, period);
+  // 広告前後が両方入力済みなら差分表示
+  const diffEl=document.getElementById('pi-ad-diff');
+  if(diffEl&&(period==='organic'||period==='ad')){
+    const ro=insightRecords[currentPostInsightId+'_organic'];
+    const ra=insightRecords[currentPostInsightId+'_ad'];
+    if(ro&&ra){
+      const dv=(ra.views||0)-(ro.views||0);
+      const dl=(ra.likes||0)-(ro.likes||0);
+      const df=(ra.followers||0)-(ro.followers||0);
+      diffEl.style.display='';
+      diffEl.innerHTML=`<strong>📣 広告効果</strong>　再生 <strong style="color:#dc2626;">+${fmt(dv)}</strong>　いいね <strong style="color:#dc2626;">+${fmt(dl)}</strong>　フォロワー <strong style="color:#059669;">+${fmt(df)}</strong>`;
+    } else {
+      diffEl.style.display='none';
+    }
+  } else if(diffEl){
+    diffEl.style.display='none';
+  }
 }
 function loadPostInsightData(itemId, period){
   const r=insightRecords[`${itemId}_${period}`]||{};
@@ -2481,7 +2520,8 @@ function renderAccountStats(name){
   if(statsBody){
     statsBody.innerHTML=statsContent;
   } else {
-    out.innerHTML=`<div style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:10px;">${snsLabel} · ${name}</div>${statsContent}`;
+    // acc-stats-body がない場合はフォールバック（通常は発生しない）
+    console.warn('acc-stats-body not found');
   }
 }
 function deleteAccountRecord(name,date){

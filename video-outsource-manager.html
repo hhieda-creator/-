@@ -430,6 +430,13 @@ tr:hover td { background: #fafbff; }
           <option value="done">✅ 完了</option>
         </select>
       </div>
+      <div class="field"><label>業務種別</label>
+        <select id="f-worktype" onchange="onWorktypeChange();updatePreview()">
+          <option value="editing">✂️ 動画編集のみ</option>
+          <option value="planning">📝 企画のみ</option>
+          <option value="planning_editing">📝✂️ 企画＋編集</option>
+        </select>
+      </div>
       <div class="field"><label>動画種別</label>
         <select id="f-type" onchange="onTypeChange();updatePreview()">
           <option value="cabaret">キャバクラ / ナイト系</option>
@@ -489,11 +496,25 @@ tr:hover td { background: #fafbff; }
       </div>
     </div>
 
-    <div class="sec">編集内容</div>
-    <div class="form-grid full">
-      <div class="field"><label>冒頭テロップ（改行で複数行）</label><textarea id="f-intro-text" rows="3" placeholder="例:&#10;中洲ブルジュ&#10;好きな男性のタイプ&#10;聞いてみた！" oninput="updatePreview()"></textarea></div>
-      <div class="field"><label>編集内容・雰囲気の指示</label><textarea id="f-edit-notes" rows="4" placeholder="例: きれいなイメージを残しつつポップで楽しいイメージで作ってください" oninput="updatePreview()"></textarea></div>
-      <div class="field"><label>特記事項（オチ・強調ポイント等）</label><textarea id="f-special" rows="2" placeholder="例: ⑤あかりさんがオチを付けてくれているので軽めに強調してください" oninput="updatePreview()"></textarea></div>
+    <!-- 企画専用セクション -->
+    <div id="section-planning" style="display:none;">
+      <div class="sec">企画内容</div>
+      <div class="form-grid full">
+        <div class="field"><label>企画テーマ・コンセプト</label><textarea id="f-plan-concept" rows="3" placeholder="例: キャバクラ嬢に「好きな男性のタイプ」をリレー形式でインタビュー" oninput="updatePreview()"></textarea></div>
+        <div class="field"><label>動画の流れ・構成案</label><textarea id="f-plan-structure" rows="4" placeholder="例: ①OP（店名テロップ）→ ②各キャストの回答（5〜8秒ずつ）→ ③オチでEND" oninput="updatePreview()"></textarea></div>
+        <div class="field"><label>参考にしたいバズ動画・企画の方向性</label><textarea id="f-plan-ref" rows="2" placeholder="例: ○○さんの「〜してみた」系、コメントが来やすいオープンクエスチョン形式で" oninput="updatePreview()"></textarea></div>
+        <div class="field"><label>KPI・目標（任意）</label><input id="f-plan-kpi" type="text" placeholder="例: 再生5万・保存率2%以上・コメント誘導" oninput="updatePreview()"></div>
+      </div>
+    </div>
+
+    <!-- 編集専用セクション -->
+    <div id="section-editing">
+      <div class="sec">編集内容</div>
+      <div class="form-grid full">
+        <div class="field"><label>冒頭テロップ（改行で複数行）</label><textarea id="f-intro-text" rows="3" placeholder="例:&#10;中洲ブルジュ&#10;好きな男性のタイプ&#10;聞いてみた！" oninput="updatePreview()"></textarea></div>
+        <div class="field"><label>編集内容・雰囲気の指示</label><textarea id="f-edit-notes" rows="4" placeholder="例: きれいなイメージを残しつつポップで楽しいイメージで作ってください" oninput="updatePreview()"></textarea></div>
+        <div class="field"><label>特記事項（オチ・強調ポイント等）</label><textarea id="f-special" rows="2" placeholder="例: ⑤あかりさんがオチを付けてくれているので軽めに強調してください" oninput="updatePreview()"></textarea></div>
+      </div>
     </div>
 
     <div id="section-extra" style="display:none;">
@@ -835,6 +856,29 @@ tr:hover td { background: #fafbff; }
   </div>
 </div>
 
+<!-- 金額編集モーダル -->
+<div id="modal-edit-amount" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1100;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:440px;max-width:90vw;">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">金額・メモを編集</h3>
+    <div id="edit-amount-title" style="font-size:12px;color:#9ca3af;margin-bottom:16px;"></div>
+    <input type="hidden" id="edit-amount-order-id">
+    <div class="form-grid full" style="gap:12px;">
+      <div class="field"><label>単価（円）</label><input id="edit-amount-price" type="number" placeholder="0"></div>
+      <div class="field"><label>本数</label><input id="edit-amount-count" type="number" placeholder="1" min="1"></div>
+      <div class="field" style="grid-column:1/-1;"><label>金額変更の理由・メモ <span style="color:#9ca3af;font-size:11px;">（例: 台本込みのため+2,000円）</span></label>
+        <input id="edit-amount-note" type="text" placeholder="理由を入力">
+      </div>
+      <div class="field" style="grid-column:1/-1;"><label>発注メモ（既存）</label>
+        <input id="edit-amount-memo" type="text" placeholder="任意">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-edit-amount').style.display='none'">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveOrderAmount()">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 編集者追加モーダル -->
 <div id="modal-editor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:16px;padding:32px;width:400px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
@@ -1120,6 +1164,31 @@ function renderFormEditorSelect(){
 }
 
 // ── TYPE ──
+function onWorktypeChange(){
+  const wt=document.getElementById('f-worktype')?.value||'editing';
+  const isPlanning = wt==='planning'||wt==='planning_editing';
+  const isEditing  = wt==='editing' ||wt==='planning_editing';
+  const planSec=document.getElementById('section-planning');
+  const editSec=document.getElementById('section-editing');
+  const telopSec=document.querySelector('.sec+.form-grid');
+  if(planSec) planSec.style.display=isPlanning?'':'none';
+  if(editSec) editSec.style.display=isEditing?'':'none';
+  // 企画のみの場合はテロップ・BGMセクションを非表示
+  const telopBgmSecs=document.querySelectorAll('#page-new .sec');
+  telopBgmSecs.forEach(s=>{
+    const txt=s.textContent.trim();
+    if(txt==='テロップ・BGM・SE'){
+      s.style.display=isEditing?'':'none';
+      let el=s.nextElementSibling;
+      while(el&&!el.classList.contains('sec')&&!el.classList.contains('actions')){
+        el.style.display=isEditing?'':'none';
+        el=el.nextElementSibling;
+      }
+    }
+  });
+  updatePreview();
+}
+
 function onTypeChange() {
   const t=document.getElementById('f-type').value;
   const isNight = t==='cabaret'||t==='hostclub';
@@ -1196,11 +1265,18 @@ function onACKey(e,i){
 // ── PREVIEW ──
 function updatePreview(){
   const v=id=>document.getElementById(id)?.value||'';
+  const worktype=v('f-worktype')||'editing';
+  const isPlanning=worktype==='planning'||worktype==='planning_editing';
+  const isEditing =worktype==='editing' ||worktype==='planning_editing';
+  const worktypeLabel={'editing':'✂️ 動画編集','planning':'📝 企画','planning_editing':'📝✂️ 企画＋編集'}[worktype]||worktype;
   const type=v('f-type'); const title=v('f-title')||'（案件名）'; const client=v('f-client'); const ym=v('f-ym');
+  const count=v('f-count')||'1';
   const shop=v('f-shop'); const editNotes=v('f-edit-notes'); const special=v('f-special');
   const introLines=v('f-intro-text').split('\n').filter(Boolean);
   const font=v('f-font'); const telopStyle=v('f-telop-style'); const bgm=v('f-bgm'); const se=v('f-se');
   const platform=v('f-platform'); const format=v('f-format'); const remarks=v('f-remarks');
+  const planConcept=v('f-plan-concept'); const planStructure=v('f-plan-structure');
+  const planRef=v('f-plan-ref'); const planKpi=v('f-plan-kpi');
   const refVideos=getUrlList('ref-videos-list'); const styleFolders=getUrlList('style-folders-list');
   const pastFolders=getUrlList('past-folders-list'); const materialFolders=getUrlList('material-folders-list'); const outputFolders=getUrlList('output-folders-list');
 
@@ -1210,7 +1286,9 @@ function updatePreview(){
   line(`【案件名】　${title}`);
   if(client) line(`【案件元】　${client}`);
   if(ym)     line(`【年月】　　${ym}`);
-  line(`【種別】　　${typeLabels[type]||type}`);
+  line(`【業務種別】${worktypeLabel}`);
+  line(`【動画種別】${typeLabels[type]||type}`);
+  if(+count>1) line(`【本数】　　${count}本`);
   line('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   blank();
 
@@ -1242,22 +1320,39 @@ function updatePreview(){
   }
 
   blank();
-  line('─────────────────────────────────────');
-  blank();
-  line('【編集内容】');
-  blank();
-  if(introLines.length){
+  // 企画内容ブロック
+  if(isPlanning){
+    line('─────────────────────────────────────');
+    blank();
+    line('【企画内容】');
+    blank();
+    if(planConcept){ line('　▼ テーマ・コンセプト'); line(`　${planConcept}`); blank(); }
+    if(planStructure){ line('　▼ 動画の構成・流れ'); planStructure.split('\n').filter(Boolean).forEach(l=>line(`　${l}`)); blank(); }
+    if(planRef){ line('　▼ 参考・方向性'); line(`　${planRef}`); blank(); }
+    if(planKpi){ line(`　▼ KPI・目標：${planKpi}`); blank(); }
+  }
+
+  if(isEditing){
+    line('─────────────────────────────────────');
+    blank();
+    line('【編集内容】');
+    blank();
+  }
+  if(introLines.length && isEditing){
     line('　冒頭テロップ：');
     introLines.forEach(l=>line(`　　「${l}」`));
 
     blank();
   }
-  if(editNotes){line(`　${editNotes}`);blank();}
-  if(special){line(`　⚡ ${special}`);blank();}
+  if(isEditing){
+    if(editNotes){line(`　${editNotes}`);blank();}
+    if(special){line(`　⚡ ${special}`);blank();}
+  }
 
-  line('─────────────────────────────────────');
-  blank();
-  line('【テロップ指定】');
+  if(isEditing){
+    line('─────────────────────────────────────');
+    blank();
+    line('【テロップ指定】');
   blank();
   line(`　フォント：${font}`);
   line(`　スタイル：${telopStyle}（参照動画の⭐を参照）`);
@@ -1270,7 +1365,8 @@ function updatePreview(){
   if(bgm)line(`　BGM：${bgm}`);
   if(se) line(`　SE ：${se}`);
   blank();
-  if(format){line(`【納品形式】　${format}`);blank();}
+  } // end isEditing
+  if(format && isEditing){line(`【納品形式】　${format}`);blank();}
 
   if(outputFolders.length){
     line('─────────────────────────────────────');
@@ -1322,6 +1418,11 @@ function saveProject(){
     talent:document.getElementById('f-talent')?.value||'',product:document.getElementById('f-product')?.value||'',
     materials:document.getElementById('f-materials')?.value||'',brand:document.getElementById('f-brand')?.value||'',
     duration:document.getElementById('f-duration')?.value||'',narration:document.getElementById('f-narration')?.value||'',
+    worktype:document.getElementById('f-worktype')?.value||'editing',
+    planConcept:document.getElementById('f-plan-concept')?.value||'',
+    planStructure:document.getElementById('f-plan-structure')?.value||'',
+    planRef:document.getElementById('f-plan-ref')?.value||'',
+    planKpi:document.getElementById('f-plan-kpi')?.value||'',
     preview:document.getElementById('preview-box').textContent,createdAt:new Date().toISOString(),
   };
   // 案件元名でアカウントを自動マッチング
@@ -1345,11 +1446,23 @@ function saveProject(){
     syncToGAS(proj); gasSave();
     toast('案件を更新しました ✓');
   } else {
-    projects.unshift(proj);
+    const count = proj.videoCount || 1;
+    if(count > 1){
+      // 複数本の場合、連番で案件を作成
+      const baseTitle = proj.title;
+      for(let i = 1; i <= count; i++){
+        const p = {...proj, id: Date.now()+i, title: `${baseTitle}_${String(i).padStart(2,'0')}`, videoCount:1, createdAt: new Date().toISOString()};
+        projects.unshift(p);
+        if(p.assignedEditor) triggerAutoOrder(p);
+      }
+      toast(`${count}本分の案件を作成しました ✓`);
+    } else {
+      projects.unshift(proj);
+      if(proj.assignedEditor) triggerAutoOrder(proj);
+      toast('案件を保存しました ✓');
+    }
     localStorage.setItem('vop_projects',JSON.stringify(projects));
     syncToGAS(proj); gasSave();
-    toast('案件を保存しました ✓');
-    if(proj.assignedEditor) triggerAutoOrder(proj);
   }
 }
 
@@ -1385,7 +1498,10 @@ function renderFiling(){
   tbody.innerHTML=filtered.map(p=>`<tr>
     <td><span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.ym||'—'}</span></td>
     <td><span class="badge badge-purple">${p.client||'未設定'}</span></td>
-    <td><strong style="font-size:13px;">${p.title}</strong></td>
+    <td>
+      <strong style="font-size:13px;">${p.title}</strong>
+      <button onclick="renameProject(${p.id})" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:11px;padding:2px 4px;margin-left:4px;" title="案件名を変更">✏️</button>
+    </td>
     <td><span class="badge ${typeBadge[p.type]||'badge-gray'}">${typeLabels[p.type]||'—'}</span></td>
     <td>${p.assignedEditor||'<span style="color:#d1d5db;">—</span>'}</td>
     <td><span class="badge ${{'pending':'badge-gray','editing':'badge-orange','done':'badge-green'}[p.status||'pending']}" style="cursor:pointer;" onclick="cycleStatus(${p.id})">${{'pending':'⬜ 未着手','editing':'🟡 編集中','done':'✅ 完了'}[p.status||'pending']}</span></td>
@@ -1405,6 +1521,12 @@ function loadProject(id){
   renderFormAccountSelect();
   if(document.getElementById('f-account'))document.getElementById('f-account').value=p.accountName||'';
   if(document.getElementById('f-postdate'))document.getElementById('f-postdate').value=p.postDate||'';
+  if(document.getElementById('f-worktype')) document.getElementById('f-worktype').value=p.worktype||'editing';
+  if(document.getElementById('f-plan-concept'))   document.getElementById('f-plan-concept').value=p.planConcept||'';
+  if(document.getElementById('f-plan-structure')) document.getElementById('f-plan-structure').value=p.planStructure||'';
+  if(document.getElementById('f-plan-ref'))       document.getElementById('f-plan-ref').value=p.planRef||'';
+  if(document.getElementById('f-plan-kpi'))       document.getElementById('f-plan-kpi').value=p.planKpi||'';
+  onWorktypeChange();
   renderFormEditorSelect();
   document.getElementById('f-editor').value=p.assignedEditor||'';
   document.getElementById('f-type').value=p.type||'cabaret'; document.getElementById('f-client').value=p.client||'';
@@ -1426,6 +1548,18 @@ function loadProject(id){
   toast('案件を読み込みました');
 }
 function copyProjectText(id){const p=projects.find(x=>x.id===id);if(!p)return;navigator.clipboard.writeText(p.preview||'').then(()=>toast('指示書をコピーしました'));}
+function renameProject(id){
+  const p=projects.find(x=>x.id===id);if(!p)return;
+  const newTitle=prompt('案件名を変更:',p.title);
+  if(!newTitle||newTitle===p.title)return;
+  p.title=newTitle.trim();
+  localStorage.setItem('vop_projects',JSON.stringify(projects));
+  // 対応する発注記録のタイトルも更新
+  editorOrders.forEach(o=>{if(o.projectId===id)o.title=p.title;});
+  localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
+  renderFiling();renderEditorOrders();
+  toast('案件名を変更しました');
+}
 function deleteProject(id){if(!confirm('この案件を削除しますか？'))return;projects=projects.filter(x=>x.id!==id);localStorage.setItem('vop_projects',JSON.stringify(projects));renderFilingClientTabs();renderFiling();toast('削除しました');}
 
 // ── AUTO ORDER ──
@@ -2982,12 +3116,16 @@ function renderEditorOrders(){
   card.style.display='';
   tbody.innerHTML=orders.map(o=>`<tr>
     <td style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${o.ym||'—'}${o.carriedFrom?`<br><span style="font-size:10px;color:#6d28d9;">↩ ${o.carriedFrom}繰越</span>`:''}</td>
-    <td><strong>${o.title||'—'}</strong>${o.memo?`<br><span style="font-size:11px;color:#9ca3af;">${o.memo}</span>`:''}</td>
+    <td><strong>${o.title||'—'}</strong>
+      ${o.memo?`<br><span style="font-size:11px;color:#9ca3af;">${o.memo}</span>`:''}
+      ${o.priceNote?`<br><span style="font-size:11px;color:#6d28d9;font-weight:600;">💡 ${o.priceNote}</span>`:''}
+    </td>
     <td>¥${fmt(o.price||0)}</td>
     <td>${o.count||1}本</td>
     <td><strong>¥${fmt((o.price||0)*(o.count||1))}</strong></td>
     <td><span class="badge ${o.status==='paid'?'badge-green':'badge-orange'}" style="cursor:pointer;" onclick="toggleOrderPaid(${o.id})">${o.status==='paid'?'支払済み':'未払い'}</span></td>
     <td class="table-actions">
+      <button class="btn-sm" onclick="editOrderAmount(${o.id})" title="金額・メモを編集">✏️ 金額</button>
       ${o.status!=='paid'?`<button class="btn-sm" onclick="carryOverOrder(${o.id})" title="翌月へ繰越">↩ 繰越</button>`:''}
       <button class="btn-sm danger" onclick="deleteOrder(${o.id})">削除</button>
     </td></tr>`).join('');
@@ -3004,6 +3142,30 @@ function deleteOrder(id){
   editorOrders=editorOrders.filter(x=>x.id!==id);
   localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
   renderEditorOrders(); toast('削除しました');
+}
+
+function editOrderAmount(id){
+  const o=editorOrders.find(x=>x.id===id);if(!o)return;
+  document.getElementById('edit-amount-order-id').value=id;
+  document.getElementById('edit-amount-title').textContent=`${o.ym||''} / ${o.title||''}`;
+  document.getElementById('edit-amount-price').value=o.price||'';
+  document.getElementById('edit-amount-count').value=o.count||1;
+  document.getElementById('edit-amount-note').value=o.priceNote||'';
+  document.getElementById('edit-amount-memo').value=o.memo||'';
+  document.getElementById('modal-edit-amount').style.display='flex';
+}
+function saveOrderAmount(){
+  const id=+document.getElementById('edit-amount-order-id').value;
+  const o=editorOrders.find(x=>x.id===id);if(!o)return;
+  o.price=+document.getElementById('edit-amount-price').value||o.price;
+  o.count=+document.getElementById('edit-amount-count').value||1;
+  o.priceNote=document.getElementById('edit-amount-note').value.trim();
+  o.memo=document.getElementById('edit-amount-memo').value.trim();
+  localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
+  gasSave();
+  document.getElementById('modal-edit-amount').style.display='none';
+  renderEditorOrders();
+  toast('金額・メモを更新しました');
 }
 
 function carryOverOrder(id){

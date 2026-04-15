@@ -2219,14 +2219,14 @@ function renderAccDetail(key, tab){
   const snsLabel={tiktok:'TikTok',instagram:'Instagram',youtube:'YouTube',twitter:'X'};
   const out=document.getElementById('account-stats-output');
 
-  const tabBar=`<div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px;">
+  const tabBar=`<div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px;align-items:center;">
+    <button onclick="closeAccDetail()" style="background:none;border:none;cursor:pointer;font-size:13px;color:#6b7280;padding:8px 12px 8px 4px;display:flex;align-items:center;gap:4px;border-right:1px solid #e5e7eb;margin-right:8px;">← 一覧</button>
     ${['stats','posts','record'].map(t=>{
-      const labels={stats:'📊 フォロワー推移',posts:'🎬 投稿一覧',record:'✏️ 数値を記録'};
-      return `<div onclick="renderAccDetail('${key}','${t}')" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:${t===tab?'2px solid #6d28d9':'2px solid transparent'};color:${t===tab?'#6d28d9':'#6b7280'};margin-bottom:-2px;">${labels[t]}</div>`;
+      const labels={stats:'📊 推移',posts:'🎬 投稿',record:'✏️ 記録'};
+      return `<div onclick="renderAccDetail('${key}','${t}')" style="padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:${t===tab?'2px solid #6d28d9':'2px solid transparent'};color:${t===tab?'#6d28d9':'#6b7280'};margin-bottom:-2px;">${labels[t]}</div>`;
     }).join('')}
     <div style="flex:1;"></div>
-    <button onclick="showEditAccountModal('${key}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#9ca3af;padding:8px 12px;">⚙️ 編集</button>
-    <button onclick="closeAccDetail()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#9ca3af;padding:8px 12px;">✕</button>
+    <button onclick="showEditAccountModal('${key}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#9ca3af;padding:8px 12px;">⚙️</button>
   </div>`;
 
   const header=`<div class="card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:16px 20px;margin-bottom:0;border-radius:12px 12px 0 0;">
@@ -2387,7 +2387,7 @@ function renderAccDetail(key, tab){
         ${insightBlock}
         <div style="display:flex;gap:4px;margin-top:8px;">
           <button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\\'")}','${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>
-          ${isPost?`<button class="btn-sm danger" onclick="deletePost('${item.id}','${key}')">削除</button>`:''}
+          ${isPost?`<button class="btn-sm" onclick="editPost('${item.id}','${key}')">✏️</button><button class="btn-sm danger" onclick="deletePost('${item.id}','${key}')">削除</button>`:''}
         </div>
       </div>`;
     };
@@ -2579,6 +2579,19 @@ function saveNewPost(){
   toast('投稿を追加しました');
 }
 
+function editPost(postId, accKey){
+  const p=posts.find(x=>String(x.id)===String(postId));if(!p)return;
+  const newDate=prompt('投稿日を変更（YYYY-MM-DD）:',p.postDate||'');
+  if(newDate===null)return;
+  const newTitle=prompt('タイトルを変更:',p.title||'');
+  if(newTitle===null)return;
+  p.postDate=newDate.trim();
+  p.title=newTitle.trim()||p.title;
+  localStorage.setItem('vop_posts',JSON.stringify(posts));
+  gasSave();
+  renderAccDetail(accKey,'posts');
+  toast('更新しました');
+}
 function deletePost(postId, accKey){
   if(!confirm('この投稿を削除しますか？'))return;
   posts=posts.filter(p=>String(p.id)!==String(postId));
@@ -2887,7 +2900,9 @@ function renderAccountStats(name){
   ]);
 
   if(!recs.length && !linkedProjects.length && !accPosts.length){
-    out.innerHTML=`<div class="card"><div class="empty-state"><div class="big">👤</div>${snsLabel} のデータがまだありません<br><span style="font-size:12px;color:#9ca3af;">案件作成時にアカウントを選択すると動画と紐づきます</span></div></div>`;
+    const emptyHtml=`<div class="card"><div class="empty-state"><div class="big">👤</div>${snsLabel} のデータがまだありません<br><span style="font-size:12px;color:#9ca3af;">「✏️ 数値を記録」タブからフォロワー数を記録できます</span></div></div>`;
+    const sb=document.getElementById('acc-stats-body');
+    if(sb) sb.innerHTML=emptyHtml; else out.innerHTML=emptyHtml;
     return;
   }
 
@@ -3039,31 +3054,40 @@ function renderAccountStats(name){
 
   // アカウントデータテーブル
   const sortedRecs=[...recs].reverse();
-  const accRows=sortedRecs.slice(0,20).map((r,i)=>{
+  const accRows=sortedRecs.slice(0,30).map((r,i)=>{
     const prev=sortedRecs[i+1];
     const diff=prev!=null?r.followers-prev.followers:null;
-    const diffHtml=diff===null?'':diff===0?'<span style="color:#9ca3af;">±0</span>':diff>0?`<span style="color:#059669;font-weight:700;">▲${fmt(diff)}</span>`:`<span style="color:#ef4444;font-weight:700;">▼${fmt(Math.abs(diff))}</span>`;
+    const diffHtml=diff===null?''
+      :diff===0?'<span style="color:#d1d5db;font-size:10px;">±0</span>'
+      :diff>0?`<span style="color:#059669;font-size:11px;font-weight:700;">+${fmt(diff)}</span>`
+      :`<span style="color:#ef4444;font-size:11px;font-weight:700;">${fmt(diff)}</span>`;
     const hasPost2=postDates.has(r.date);
-    return `<tr style="background:${hasPost2?'#fff9f0':''};">
-      <td style="font-family:monospace;font-size:11px;white-space:nowrap;">${r.date}${hasPost2?' 🎬':''}</td>
-      <td style="font-weight:700;">${fmt(r.followers||0)}</td>
-      <td style="font-size:11px;">${diffHtml}</td>
-      <td style="color:#6b7280;">${fmt(r.views||0)}</td>
-      <td style="color:#6b7280;">${fmt(r.profile||0)}</td>
-      <td style="color:#6b7280;">${fmt(r.likes||0)}</td>
-      <td style="color:#9ca3af;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.memo||''}</td>
-      <td><button class="btn-sm danger" onclick="deleteAccountRecord('${name}','${r.date}')">削除</button></td>
+    return `<tr style="background:${hasPost2?'#fffbeb':''};border-bottom:1px solid #f3f4f6;">
+      <td style="font-size:11px;color:#6b7280;padding:5px 8px;white-space:nowrap;">${r.date.slice(5)}${hasPost2?' 🎬':''}</td>
+      <td style="font-size:12px;font-weight:700;padding:5px 8px;">${fmt(r.followers||0)}</td>
+      <td style="padding:5px 8px;">${diffHtml}</td>
+      <td style="font-size:11px;color:#6b7280;padding:5px 8px;">${fmt(r.views||0)}</td>
+      <td style="font-size:11px;color:#6b7280;padding:5px 8px;">${fmt(r.likes||0)}</td>
+      <td style="font-size:10px;color:#9ca3af;padding:5px 8px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.memo||''}</td>
+      <td style="padding:5px 8px;"><button style="background:none;border:none;cursor:pointer;color:#d1d5db;font-size:11px;" onclick="deleteAccountRecord('${name}','${r.date}')">✕</button></td>
     </tr>`;
   }).join('');
 
   const accTableHtml=recs.length?`
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center;">
-        <div class="sec" style="margin:0;">アカウントデータ記録</div>
+      <div style="padding:12px 16px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f3f4f6;">
+        <div style="font-size:12px;font-weight:700;color:#374151;">アカウントデータ記録</div>
+        <span style="font-size:11px;color:#9ca3af;">${recs.length}件</span>
       </div>
       <div style="overflow-x:auto;">
-      <table style="font-size:12px;"><thead><tr style="background:#f9fafb;">
-        <th>日付</th><th>フォロワー</th><th>増減</th><th>再生数</th><th>プロフ訪問</th><th>いいね</th><th>メモ</th><th></th>
+      <table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f9fafb;">
+        <th style="font-size:10px;color:#9ca3af;font-weight:600;padding:5px 8px;text-align:left;">日付</th>
+        <th style="font-size:10px;color:#9ca3af;font-weight:600;padding:5px 8px;text-align:left;">フォロワー</th>
+        <th style="font-size:10px;color:#9ca3af;font-weight:600;padding:5px 8px;text-align:left;">増減</th>
+        <th style="font-size:10px;color:#9ca3af;font-weight:600;padding:5px 8px;text-align:left;">再生数</th>
+        <th style="font-size:10px;color:#9ca3af;font-weight:600;padding:5px 8px;text-align:left;">いいね</th>
+        <th style="font-size:10px;color:#9ca3af;font-weight:600;padding:5px 8px;text-align:left;">メモ</th>
+        <th style="padding:5px 8px;"></th>
       </tr></thead>
       <tbody>${accRows}</tbody></table></div>
     </div>`:'';
@@ -3399,7 +3423,7 @@ function switchPostsMonth(accKey, selectedYm){
     const dateStr=(item._sortDate||'').slice(5)||'—';
     const badge=isPost?ptBadge2[item.postType||'organic']||ptBadge2.organic:'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:4px;font-weight:600;">案件</span>';
     const insightBlock=r?`<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:18px;font-weight:800;color:#111827;">${fmt(r.views||0)}</span><span style="font-size:11px;color:#6d28d9;font-weight:700;">${er}%ER</span></div><div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">${r.saves?`<span style="font-size:10px;color:#0891b2;">保存${fmt(r.saves)}</span>`:''}${r.watchTime?`<span style="font-size:10px;color:#6b7280;">⏱${r.watchTime}s</span>`:''}${r.dropoutTime?`<span style="font-size:10px;color:#ef4444;">離脱${r.dropoutTime}s</span>`:''}${r.fullViewRate?`<span style="font-size:10px;color:#059669;">フル${r.fullViewRate}%</span>`:''}</div></div>`:'<div style="margin-top:8px;padding:6px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
-    return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 12px rgba(109,40,217,0.10)'" onmouseout="this.style.boxShadow=''"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${dateStr}</span>${badge}</div><div style="font-weight:700;font-size:13px;line-height:1.4;margin-bottom:2px;">${item.title||'—'}</div>${insightBlock}<div style="display:flex;gap:4px;margin-top:8px;"><button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\\'")}','${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>${isPost?`<button class="btn-sm danger" onclick="deletePost('${item.id||item._id}','${accKey}')">削除</button>`:''}</div></div>`;
+    return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 12px rgba(109,40,217,0.10)'" onmouseout="this.style.boxShadow=''"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${dateStr}</span>${badge}</div><div style="font-weight:700;font-size:13px;line-height:1.4;margin-bottom:2px;">${item.title||'—'}</div>${insightBlock}<div style="display:flex;gap:4px;margin-top:8px;"><button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\\'")}','${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>${isPost?`<button class="btn-sm" onclick="editPost('${item.id||item._id.replace('post_','')}','${accKey}')">✏️</button><button class="btn-sm danger" onclick="deletePost('${item.id||item._id}','${accKey}')">削除</button>`:''}</div></div>`;
   }).join('');
 }
 

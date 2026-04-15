@@ -638,6 +638,9 @@ tr:hover td { background: #fafbff; }
     <button class="btn btn-primary" onclick="showAddAccountModal()">＋ アカウント追加</button>
   </div>
 
+  <!-- リマインダーバナー -->
+  <div id="insight-reminders"></div>
+
   <!-- アカウント一覧（クライアント別） -->
   <div id="account-list-wrap"></div>
 
@@ -1132,6 +1135,7 @@ window.onload = async () => {
   renderFormAccountSelect();
   renderShopDatalist();
   renderAccountList();
+  checkInsightReminders();
   // GASからデータ読み込み（GAS URLが設定されていれば）
   if (GAS_URL) {
     showSyncBanner('☁️ GASからデータ読み込み中...');
@@ -1156,7 +1160,7 @@ function goto(el, page) {
   }
   if(page==='filing')   { renderFilingClientTabs(); renderFiling(); }
   if(page==='insights') { populateInsightProjects(); }
-  if(page==='account')  { renderAccountSelect(); renderAccountList(); }
+  if(page==='account')  { renderAccountSelect(); renderAccountList(); checkInsightReminders(); }
   if(page==='cast')     { renderCastMasterPage(); }
   if(page==='editor')   { renderEditorPage(); }
 }
@@ -2373,20 +2377,56 @@ function renderAccDetail(key, tab){
       const dateStr=(item._sortDate||'').slice(5)||'';
       const dateColor=item._sortDate?'#9ca3af':'#ef4444';
       const dateOnclick=isPost?('editPost(\'' + item.id + '\',\'' + key + '\')'):('changePostDate(' + item.id + ')');
-      let ib='<div style="margin-top:8px;padding:5px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
-      if(r){
-        ib='<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;">'
-          +'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
-          +'<span style="font-size:16px;font-weight:800;">'+fmt(r.views||0)+'</span>'
-          +(er?'<span style="font-size:11px;color:#6d28d9;font-weight:700;">'+er+'%ER</span>':'')
-          +'</div>'
-          +'<div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;">'
-          +(r.saves?'<span style="font-size:10px;color:#0891b2;">保存'+fmt(r.saves)+'</span>':'')
-          +(r.watchTime?'<span style="font-size:10px;color:#6b7280;">⏱'+r.watchTime+'s</span>':'')
-          +(r.dropoutTime?'<span style="font-size:10px;color:#ef4444;">離脱'+r.dropoutTime+'s</span>':'')
-          +(r.fullViewRate?'<span style="font-size:10px;color:#059669;">フル'+r.fullViewRate+'%</span>':'')
-          +'</div></div>';
+      // 全期間のインサイットを取得
+      const sid2=String(item._id);
+      const snapKeys5=Object.keys(insightRecords).filter(k=>k.startsWith(sid2+'_snap_')).sort();
+      const periods=['48h','1week','1month'];
+      const periodLabels={'48h':'48h','1week':'1週','1month':'1ヶ月'};
+      // 旧形式データ
+      const legacySnaps=periods.map(p=>({label:periodLabels[p],r:insightRecords[sid2+'_'+p]})).filter(x=>x.r);
+      // 新形式スナップ（最大3件）
+      const newSnaps=snapKeys5.slice(-3).map(k=>{
+        const d=insightRecords[k];
+        return {label:d.label?({'48h':'48h','1week':'1週','1month':'1ヶ月','ad_start':'広告前','ad_3day':'広告3日','ad_1week':'広告1週','ad_end':'広告後'}[d.label]||d.label):(d.date||'').slice(5)||'記録',r:d,isAd:d.isAd};
+      });
+      const allSnaps=[...legacySnaps,...newSnaps];
+      // 常に48h/1週/1ヶ月の3列を表示（未入力は—で表示）
+      const fixedPeriods=[
+        {key:'48h',label:'48h',legacy:insightRecords[sid2+'_48h']},
+        {key:'1week',label:'1週',legacy:insightRecords[sid2+'_1week']},
+        {key:'1month',label:'1ヶ月',legacy:insightRecords[sid2+'_1month']}
+      ];
+      // 新形式スナップがある場合は最新3件で上書き
+      let displayCols;
+      if(newSnaps.length){
+        displayCols=newSnaps.slice(-3).map(s=>({label:s.label,r:s.r,isAd:s.isAd}));
+        // 3件未満なら旧形式で補完
+        while(displayCols.length<3){
+          const leg=legacySnaps[3-displayCols.length-1]||{label:'—',r:null};
+          displayCols.unshift(leg);
+        }
+      } else {
+        displayCols=fixedPeriods.map(fp=>({label:fp.label,r:fp.legacy||null,isAd:false}));
       }
+      let ib='<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">';
+      displayCols.forEach(s=>{
+        const rv=s.r;
+        const erv=rv&&rv.views?((rv.likes+rv.comments+rv.shares)/rv.views*100).toFixed(1):null;
+        const bg=!rv?'#f9fafb':s.isAd?'#fff1f2':'#f0fdf4';
+        const lc=s.isAd?'#dc2626':'#6b7280';
+        ib+='<div style="background:'+bg+';border-radius:6px;padding:5px 4px;text-align:center;border:1px solid '+(rv?'#e5e7eb':'#f3f4f6')+'">'
+          +'<div style="font-size:9px;color:'+lc+';font-weight:600;margin-bottom:2px;">'+(s.isAd?'📣':'')+s.label+'</div>';
+        if(rv&&rv.views){
+          ib+='<div style="font-size:13px;font-weight:800;line-height:1.1;color:#111827;">'+fmt(rv.views)+'</div>'
+            +(erv?'<div style="font-size:9px;color:#6d28d9;font-weight:600;">'+erv+'%ER</div>':'')
+            +(rv.saves?'<div style="font-size:9px;color:#0891b2;">保存'+fmt(rv.saves)+'</div>':'')
+            +(rv.dropoutTime?'<div style="font-size:9px;color:#ef4444;">離脱'+rv.dropoutTime+'s</div>':'');
+        } else {
+          ib+='<div style="font-size:10px;color:#d1d5db;margin-top:4px;">—</div>';
+        }
+        ib+='</div>';
+      });
+      ib+='</div>';
       // data-attribute方式でIDを確実に渡す
       const realId=String(isPost?item.id:item._id||item.id||'');
       const insId=isPost?('post_'+realId):realId;
@@ -3035,7 +3075,7 @@ function renderAccountStats(name){
   const makeStatCard=(item)=>{
     const r=getStatBest(item._id);
     const er=r&&r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):null;
-    const ib=r?`<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:16px;font-weight:800;">${fmt(r.views||0)}</span><span style="font-size:11px;color:#6d28d9;font-weight:700;">${er}%ER</span></div><div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;">${r.saves?`<span style="font-size:10px;color:#0891b2;">保存${fmt(r.saves)}</span>`:''}${r.watchTime?`<span style="font-size:10px;color:#6b7280;">⏱${r.watchTime}s</span>`:''}${r.dropoutTime?`<span style="font-size:10px;color:#ef4444;">離脱${r.dropoutTime}s</span>`:''}${r.fullViewRate?`<span style="font-size:10px;color:#059669;">フル${r.fullViewRate}%</span>`:''}</div></div>`:'<div style="margin-top:8px;padding:5px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
+    const ib=buildInsightGrid(String(item._id||item.id||''));
     return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 12px rgba(109,40,217,0.10)'" onmouseout="this.style.boxShadow=''"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${item.date.slice(5)||'—'}</span>${item.badge}</div><div style="font-weight:700;font-size:12px;line-height:1.4;margin-bottom:2px;">${item.title||'—'}</div>${ib}<div style="margin-top:8px;">${item.btnHtml}</div></div>`;
   };
 
@@ -3421,12 +3461,120 @@ function switchStatMonth(btn, selectedYm){
   const makeCard2=(item)=>{
     const r=(()=>{const sid=String(item._id);const snaps=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();if(snaps.length)return insightRecords[snaps[snaps.length-1]];for(const p of['1week','1month','48h']){if(insightRecords[sid+'_'+p])return insightRecords[sid+'_'+p];}return null;})();
     const er=r&&r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):null;
-    const ib=r?`<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:16px;font-weight:800;">${fmt(r.views||0)}</span><span style="font-size:11px;color:#6d28d9;font-weight:700;">${er}%ER</span></div></div>`:'<div style="margin-top:8px;padding:5px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
+    const ib=buildInsightGrid(insightId||sid);
     return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${item.date.slice(5)||'—'}</span>${item.badge}</div><div style="font-weight:700;font-size:12px;line-height:1.4;margin-bottom:2px;">${item.title}</div>${ib}<div style="margin-top:8px;">${item.btnHtml}</div></div>`;
   };
   grid.innerHTML=items.map(makeCard2).join('');
 }
 
+
+// ── インサイットリマインダー ──
+function checkInsightReminders(){
+  const wrap=document.getElementById('insight-reminders');
+  if(!wrap)return;
+
+  const now=new Date();
+  const reminders=[];
+
+  // 全投稿（独立投稿＋案件）を対象にチェック
+  const allItems=[
+    ...posts.map(p=>({id:'post_'+p.id,title:p.title,postDate:p.postDate,accountKey:p.accountKey})),
+    ...projects.filter(p=>p.postDate).map(p=>({id:String(p.id),title:p.title,postDate:p.postDate,accountKey:p.accountName}))
+  ].filter(x=>x.postDate);
+
+  const periods=[
+    {key:'48h',label:'48時間後',hours:48,legacy:'48h'},
+    {key:'1week',label:'1週間後',hours:168,legacy:'1week'},
+    {key:'1month',label:'1ヶ月後',hours:720,legacy:'1month'}
+  ];
+
+  allItems.forEach(item=>{
+    const postDt=new Date(item.postDate);
+    if(isNaN(postDt))return;
+
+    periods.forEach(period=>{
+      const targetDt=new Date(postDt.getTime()+period.hours*3600000);
+      const diffHours=(now-targetDt)/3600000;
+
+      // 記録タイミングを過ぎている（0〜72時間以内）かつ未記録
+      if(diffHours<0||diffHours>72)return;
+
+      // 既に記録済みか確認（旧形式＋新形式）
+      const hasLegacy=!!insightRecords[item.id+'_'+period.legacy];
+      const hasSnap=Object.keys(insightRecords).some(k=>k.startsWith(item.id+'_snap_'));
+      if(hasLegacy||hasSnap)return;
+
+      const daysAgo=Math.floor(diffHours/24);
+      const hoursAgo=Math.floor(diffHours%24);
+      const timeStr=daysAgo>0?daysAgo+'日'+hoursAgo+'時間前':Math.floor(diffHours)+'時間前';
+
+      reminders.push({...item,period,timeStr,urgency:diffHours<12?'high':diffHours<36?'mid':'low'});
+    });
+  });
+
+  if(!reminders.length){
+    wrap.innerHTML='';
+    return;
+  }
+
+  // 緊急度順にソート
+  reminders.sort((a,b)=>a.urgency==='high'?-1:1);
+
+  const colors={high:['#fff1f2','#fecdd3','#dc2626','🔴'],mid:['#fffbeb','#fde68a','#d97706','🟡'],low:['#f0fdf4','#bbf7d0','#059669','🟢']};
+  const html='<div style="margin-bottom:16px;">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+    +'<span style="font-size:14px;font-weight:700;color:#374151;">📊 インサイット記録のお知らせ</span>'
+    +'<span style="font-size:11px;color:#9ca3af;">'+reminders.length+'件</span>'
+    +'</div>'
+    +reminders.slice(0,6).map(r=>{
+      const [bg,border,tc,icon]=colors[r.urgency];
+      return '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+        +'<span style="font-size:14px;">'+icon+'</span>'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:12px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+r.title+'</div>'
+        +'<div style="font-size:11px;color:'+tc+';">'+r.period.label+'のデータ入力時期です（'+r.timeStr+'）</div>'
+        +'</div>'
+        +'<button class="btn-sm" data-action="insight" data-id="'+r.id+'" data-title="'+encodeURIComponent(r.title)+'" data-type="organic" onclick="handleCardBtn(this)" style="background:'+tc+';color:#fff;border:none;white-space:nowrap;">📊 入力する</button>'
+        +'</div>';
+    }).join('')
+    +(reminders.length>6?'<div style="font-size:11px;color:#9ca3af;text-align:center;">他 '+(reminders.length-6)+'件</div>':'')
+    +'</div>';
+
+  wrap.innerHTML=html;
+}
+
+function buildInsightGrid(sid){
+  const snap=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
+  const cols=[
+    {label:'48h',r:insightRecords[sid+'_48h']||null,isAd:false},
+    {label:'1週',r:insightRecords[sid+'_1week']||null,isAd:false},
+    {label:'1ヶ月',r:insightRecords[sid+'_1month']||null,isAd:false}
+  ];
+  if(snap.length){
+    snap.slice(-3).forEach((k,i)=>{
+      const d=insightRecords[k];
+      const lmap={'48h':'48h','1week':'1週','1month':'1ヶ月','ad_start':'広告前','ad_3day':'広告3日','ad_end':'広告後'};
+      cols[i]={label:(d.label?lmap[d.label]||d.label:(d.date||'').slice(5)||'記録'),r:d,isAd:d.isAd};
+    });
+  }
+  let html='<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">';
+  cols.forEach(c=>{
+    const rv=c.r;
+    const erv=rv&&rv.views?((rv.likes+rv.comments+rv.shares)/rv.views*100).toFixed(1):null;
+    html+='<div style="background:'+(rv?(c.isAd?'#fff1f2':'#f0fdf4'):'#f9fafb')+';border-radius:6px;padding:5px 4px;text-align:center;border:1px solid '+(rv?'#e5e7eb':'#f3f4f6')+'">'
+      +'<div style="font-size:9px;color:'+(c.isAd?'#dc2626':'#6b7280')+';font-weight:600;margin-bottom:2px;">'+(c.isAd?'📣':'')+c.label+'</div>';
+    if(rv&&rv.views){
+      html+='<div style="font-size:13px;font-weight:800;line-height:1.1;">'+fmt(rv.views)+'</div>'
+        +(erv?'<div style="font-size:9px;color:#6d28d9;font-weight:600;">'+erv+'%ER</div>':'')
+        +(rv.saves?'<div style="font-size:9px;color:#0891b2;">保存'+fmt(rv.saves)+'</div>':'')
+        +(rv.dropoutTime?'<div style="font-size:9px;color:#ef4444;">離脱'+rv.dropoutTime+'s</div>':'');
+    } else {
+      html+='<div style="font-size:10px;color:#d1d5db;margin-top:4px;">—</div>';
+    }
+    html+='</div>';
+  });
+  return html+'</div>';
+}
 function handleCardBtn(btn){
   const action=btn.dataset.action;
   const id=btn.dataset.id;
@@ -3483,14 +3631,11 @@ function switchPostsMonth(accKey, selectedYm){
     const er=r&&r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):null;
     const dateStr=(item._sortDate||'').slice(5)||'—';
     const badge=isPost?(ptBadge2[item.postType||'organic']||ptBadge2.organic):'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:4px;font-weight:600;">案件</span>';
-    let ib='<div style="margin-top:8px;padding:5px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
-    if(r){
-      ib='<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;">'
-        +'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
-        +'<span style="font-size:16px;font-weight:800;">'+fmt(r.views||0)+'</span>'
-        +(er?'<span style="font-size:11px;color:#6d28d9;font-weight:700;">'+er+'%ER</span>':'')
-        +'</div></div>';
-    }
+    // 全期間スナップ
+    const swSnapsNew=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort().slice(-3).map(k=>{const d=insightRecords[k];return{label:d.label?({'48h':'48h','1week':'1週','1month':'1ヶ月','ad_start':'広告前','ad_3day':'広告3日','ad_1week':'広告1週','ad_end':'広告後'}[d.label]||d.label):(d.date||'').slice(5)||'記録',r:d,isAd:d.isAd};});
+    const swSnapsLegacy=['48h','1week','1month'].map(p=>({label:{'48h':'48h','1week':'1週','1month':'1ヶ月'}[p],r:insightRecords[sid+'_'+p]})).filter(x=>x.r);
+    const swSnaps=[...swSnapsLegacy,...swSnapsNew];
+    const ib=buildInsightGrid(sid);
     let html='<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;">';
     html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">';
     html+='<span style="font-size:11px;color:#9ca3af;">'+dateStr+'</span>'+badge+'</div>';
@@ -3885,7 +4030,7 @@ function gotoMobile(el, page){
     }
     if(page==='filing') { renderFilingClientTabs(); renderFiling(); }
     if(page==='insights') populateInsightProjects();
-    if(page==='account') renderAccountSelect();
+    if(page==='account') { renderAccountSelect(); checkInsightReminders(); }
     if(page==='cast') renderCastMasterPage();
     if(page==='editor') renderEditorPage();
     window.scrollTo(0,0);

@@ -2331,61 +2331,92 @@ function renderAccDetail(key, tab){
 
     const hasAny=accPosts.length||linkedProj.length;
 
-    // 月別グルーピング
+    // 全投稿を統合してソート
     const allItems=[
       ...accPosts.map(p=>({...p,_id:'post_'+p.id,_isPost:true,_sortDate:p.postDate||''})),
       ...linkedProj.map(p=>({...p,_id:String(p.id),_isPost:false,_sortDate:p.postDate||p.ym||''}))
     ].sort((a,b)=>b._sortDate.localeCompare(a._sortDate));
 
-    const byMonth={};
-    allItems.forEach(item=>{
-      const ym=(item._sortDate||'').slice(0,7)||'日付なし';
-      if(!byMonth[ym])byMonth[ym]=[];
-      byMonth[ym].push(item);
-    });
+    // 月リスト生成
+    const months=[...new Set(allItems.map(item=>(item._sortDate||'').slice(0,7)||'未設定'))].sort((a,b)=>b.localeCompare(a));
+    const currentMonth=months[0]||'';
 
-    const monthGroups=Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0])).map(([ym,items])=>{
-      const rows=items.map(item=>{
-        const isPost=item._isPost;
-        const snapKeys2=Object.keys(insightRecords).filter(k=>k.startsWith(item._id+'_snap_')).sort();
-        const legacyPeriods2=['48h','1week','1month','organic','ad'].filter(p=>insightRecords[item._id+'_'+p]);
-        const hasSnaps=snapKeys2.length>0||legacyPeriods2.length>0;
-        const badgeHtml=isPost
-          ?ptBadge[item.postType||'organic']||ptBadge.organic
-          :'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:4px;">案件</span>';
-        const insightHtml=hasSnaps?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${mkCells(item._id,item.postType)
-          .replace(/<td[^>]*>/g,'').replace(/<\/td>/g,'').split('<div').filter(s=>s.trim()).map(s=>'<div'+s).slice(0,3).join('')}</div>`:
-          `<span style="font-size:11px;color:#d1d5db;">未入力</span>`;
+    // インサイットサマリ取得（スナップ最新1件）
+    const getInsightSummary=(itemId)=>{
+      const sid=String(itemId);
+      const snapKeys3=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
+      const legacy=['48h','1week','1month','organic','ad'].filter(p=>insightRecords[sid+'_'+p]);
+      if(snapKeys3.length){
+        const r=insightRecords[snapKeys3[snapKeys3.length-1]];
+        if(r&&r.views) return r;
+      }
+      for(const p of ['1week','1month','48h','organic','ad']){
+        if(insightRecords[sid+'_'+p]) return insightRecords[sid+'_'+p];
+      }
+      return null;
+    };
 
-        return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f3f4f6;">
-          <div style="min-width:80px;font-size:11px;color:#6b7280;">
-            <div>${(item._sortDate||'—').slice(5)||'—'}</div>
-            <div style="margin-top:3px;">${badgeHtml}</div>
+    // カード生成
+    const makeCard=(item)=>{
+      const isPost=item._isPost;
+      const r=getInsightSummary(item._id);
+      const er=r&&r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):null;
+      const badgeHtml=isPost
+        ?ptBadge[item.postType||'organic']||ptBadge.organic
+        :'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:4px;font-weight:600;">案件</span>';
+      const dateStr=(item._sortDate||'').slice(5)||'—';
+      const insightBlock=r?`
+        <div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:18px;font-weight:800;color:#111827;">${fmt(r.views||0)}</span>
+            <span style="font-size:11px;color:#6d28d9;font-weight:700;">${er}%ER</span>
           </div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.title||'—'}</div>
-            <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;">
-              <button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\'")}',' ${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>
-              ${isPost?`<button class="btn-sm danger" onclick="deletePost('${item.id}','${key}')">削除</button>`:''}
-            </div>
-            ${hasSnaps?`<div style="margin-top:6px;">${mkCells(item._id,isPost?item.postType:null)}</div>`:''}
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+            ${r.saves?`<span style="font-size:10px;color:#0891b2;">保存${fmt(r.saves)}</span>`:''}
+            ${r.watchTime?`<span style="font-size:10px;color:#6b7280;">⏱${r.watchTime}s</span>`:''}
+            ${r.dropoutTime?`<span style="font-size:10px;color:#ef4444;">離脱${r.dropoutTime}s</span>`:''}
+            ${r.fullViewRate?`<span style="font-size:10px;color:#059669;">フル${r.fullViewRate}%</span>`:''}
           </div>
-        </div>`;
-      }).join('');
-      return `<div style="margin-bottom:8px;">
-        <div style="font-size:12px;font-weight:700;color:#6d28d9;padding:8px 0 4px;border-bottom:2px solid #ede9fe;margin-bottom:4px;">${ym==='日付なし'?'📅 日付未設定':('📅 '+ym)}</div>
-        ${rows}
+        </div>`:'<div style="margin-top:8px;padding:6px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
+      return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:0;min-width:0;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 12px rgba(109,40,217,0.10)'" onmouseout="this.style.boxShadow=''">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+          <span style="font-size:11px;color:#9ca3af;">${dateStr}</span>
+          ${badgeHtml}
+        </div>
+        <div style="font-weight:700;font-size:13px;line-height:1.4;margin-bottom:2px;">${item.title||'—'}</div>
+        ${insightBlock}
+        <div style="display:flex;gap:4px;margin-top:8px;">
+          <button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\\'")}','${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>
+          ${isPost?`<button class="btn-sm danger" onclick="deletePost('${item.id}','${key}')">削除</button>`:''}
+        </div>
       </div>`;
+    };
+
+    // 月タブHTML
+    const monthTabsHtml=months.map((m,i)=>{
+      const cnt=allItems.filter(item=>((item._sortDate||'').slice(0,7)||'未設定')===m).length;
+      return `<button onclick="switchPostsMonth('${key}','${m}')" id="ptab-${key.replace(/[^a-z0-9]/gi,'_')}-${m}" style="padding:6px 14px;border-radius:20px;border:1.5px solid ${i===0?'#6d28d9':'#e5e7eb'};background:${i===0?'#6d28d9':'#fff'};color:${i===0?'#fff':'#6b7280'};font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">${m==='未設定'?'日付なし':m} <span style="font-size:10px;opacity:.8;">${cnt}</span></button>`;
     }).join('');
 
+    // 選択月のカード
+    const selectedMonthItems=allItems.filter(item=>((item._sortDate||'').slice(0,7)||'未設定')===currentMonth);
+    const cardsHtml=selectedMonthItems.map(makeCard).join('');
+
     body=`
-      <div style="margin-bottom:12px;">
+      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="showAddPostModal('${key}')">＋ 投稿を追加</button>
       </div>
       ${chart}
-      ${hasAny?monthGroups:`<div class="empty-state"><div class="big">🎬</div>投稿がまだありません<br><span style="font-size:12px;color:#9ca3af;">「＋ 投稿を追加」から登録してください</span></div>`}
+      ${hasAny?`
+        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:14px;" id="posts-month-tabs-${key.replace(/[^a-z0-9]/gi,'_')}">
+          ${monthTabsHtml}
+        </div>
+        <div id="posts-cards-${key.replace(/[^a-z0-9]/gi,'_')}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+          ${cardsHtml}
+        </div>
+      `:`<div class="empty-state"><div class="big">🎬</div>投稿がまだありません<br><span style="font-size:12px;color:#9ca3af;">「＋ 投稿を追加」から登録してください</span></div>`}
     `;
-  } else if(tab==='record'){
+    } else if(tab==='record'){
     const recentRecs=[...recs].reverse().slice(0,10);
     const recsListHtml=recs.length?`
       <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.3px;">📋 過去の記録（クリックで読み込み・編集）</div>
@@ -2925,42 +2956,51 @@ function renderAccountStats(name){
     </div>`;
   })()
 
-  // 動画一覧（案件＋独立投稿）
-  const mkStatCells=(itemId)=>{
+  // 動画一覧（案件＋独立投稿）カード形式
+  const getStatBest=(itemId)=>{
     const sid=String(itemId);
-    const snapKeys=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
-    const hasNew=snapKeys.length>0;
-    const periods=hasNew?snapKeys.slice(-3):['48h','1week','1month'];
-    return periods.map(period=>{
-      const r=hasNew?insightRecords[period]:insightRecords[sid+'_'+period];
-      if(!r)return `<td style="color:#d1d5db;font-size:11px;text-align:center;">—</td>`;
-      const er=r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):'—';
-      const lbl=hasNew?(r.label||r.date||''):({'48h':'48h','1week':'1週','1month':'1ヶ月'}[period]||period);
-      return `<td><div style="font-size:11px;line-height:1.6;text-align:center;">
-        <div style="font-size:9px;color:#9ca3af;">${lbl}</div>
-        <div><strong>${fmt(r.views||0)}</strong></div>
-        <div style="color:#6d28d9;">${er}% ER</div>
-        ${r.dropoutTime?`<div style="color:#ef4444;font-size:10px;">離脱${r.dropoutTime}s</div>`:''}
-      </div></td>`;
-    }).join('');
+    const snaps=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
+    if(snaps.length) return insightRecords[snaps[snaps.length-1]];
+    for(const p of ['1week','1month','48h','organic','ad']){
+      if(insightRecords[sid+'_'+p]) return insightRecords[sid+'_'+p];
+    }
+    return null;
   };
-  const projRows2=linkedProjects.map(p=>`<tr>
-    <td style="white-space:nowrap;"><span style="font-family:monospace;font-size:11px;color:#6b7280;">${p.postDate||p.ym||'—'}</span><br><span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:1px 5px;border-radius:4px;">案件</span></td>
-    <td><strong style="font-size:13px;">${p.title}</strong><div style="font-size:11px;color:#9ca3af;">${typeLabels[p.type]||''}</div>
-      <button class="btn-sm" style="margin-top:4px;" onclick="openPostInsight('${p.id}','${p.title.replace(/'/g,"\'")}','${p.type||''}')">📊 入力</button>
-    </td>
-    ${mkStatCells(p.id)}
-  </tr>`).join('');
-  const pBadge={organic:'<span style="font-size:10px;background:#dcfce7;color:#059669;padding:1px 5px;border-radius:4px;">🌱</span>',ad:'<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;">📣</span>',organic_ad:'<span style="font-size:10px;background:#fef3c7;color:#d97706;padding:1px 5px;border-radius:4px;">🌱📣</span>'};
-  const postRows2=accPosts.map(p=>`<tr>
-    <td style="white-space:nowrap;"><span style="font-family:monospace;font-size:11px;color:#6b7280;">${p.postDate||'—'}</span><br>${pBadge[p.postType||'organic']||pBadge.organic}</td>
-    <td><strong style="font-size:13px;">${p.title}</strong>
-      <button class="btn-sm" style="margin-top:4px;" onclick="openPostInsight('post_${p.id}','${p.title.replace(/'/g,"\'")}','${p.postType||'organic'}')">📊 入力</button>
-    </td>
-    ${mkStatCells('post_'+p.id)}
-  </tr>`).join('');
-  const videoRows=projRows2+postRows2;
-  // 動画比較グラフ（再生数バー）
+
+  // 全投稿を統合してカード生成
+  const allVidItems=[
+    ...linkedProjects.map(p=>({_id:String(p.id),title:p.title,date:p.postDate||p.ym||'',badge:'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:4px;font-weight:600;">案件</span>',btnHtml:`<button class="btn-sm" onclick="openPostInsight('${p.id}','${p.title.replace(/'/g,"\'")}','${p.type||''}')">📊 入力</button>`})),
+    ...accPosts.map(p=>({_id:'post_'+p.id,title:p.title,date:p.postDate||'',badge:({'organic':'<span style="font-size:10px;background:#dcfce7;color:#059669;padding:2px 7px;border-radius:4px;font-weight:600;">🌱</span>','ad':'<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:4px;font-weight:600;">📣</span>','organic_ad':'<span style="font-size:10px;background:#fef3c7;color:#d97706;padding:2px 7px;border-radius:4px;font-weight:600;">🌱📣</span>'})[p.postType||'organic'],btnHtml:`<button class="btn-sm" onclick="openPostInsight('post_${p.id}','${p.title.replace(/'/g,"\'")}','${p.postType||'organic'}')">📊 入力</button>`}))
+  ].sort((a,b)=>b.date.localeCompare(a.date));
+
+  // 月別グルーピング
+  const statMonths=[...new Set(allVidItems.map(x=>x.date.slice(0,7)||'未設定'))].sort((a,b)=>b.localeCompare(a));
+  const statCurMonth=statMonths[0]||'';
+
+  const makeStatCard=(item)=>{
+    const r=getStatBest(item._id);
+    const er=r&&r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):null;
+    const ib=r?`<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:16px;font-weight:800;">${fmt(r.views||0)}</span><span style="font-size:11px;color:#6d28d9;font-weight:700;">${er}%ER</span></div><div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;">${r.saves?`<span style="font-size:10px;color:#0891b2;">保存${fmt(r.saves)}</span>`:''}${r.watchTime?`<span style="font-size:10px;color:#6b7280;">⏱${r.watchTime}s</span>`:''}${r.dropoutTime?`<span style="font-size:10px;color:#ef4444;">離脱${r.dropoutTime}s</span>`:''}${r.fullViewRate?`<span style="font-size:10px;color:#059669;">フル${r.fullViewRate}%</span>`:''}</div></div>`:'<div style="margin-top:8px;padding:5px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
+    return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 12px rgba(109,40,217,0.10)'" onmouseout="this.style.boxShadow=''"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${item.date.slice(5)||'—'}</span>${item.badge}</div><div style="font-weight:700;font-size:12px;line-height:1.4;margin-bottom:2px;">${item.title||'—'}</div>${ib}<div style="margin-top:8px;">${item.btnHtml}</div></div>`;
+  };
+
+  const statMonthTabsHtml=statMonths.map((m,i)=>{
+    const cnt=allVidItems.filter(x=>(x.date.slice(0,7)||'未設定')===m).length;
+    return `<button onclick="switchStatMonth(this,'${m}')" class="stat-month-btn" style="padding:5px 12px;border-radius:20px;border:1.5px solid ${i===0?'#6d28d9':'#e5e7eb'};background:${i===0?'#6d28d9':'#fff'};color:${i===0?'#fff':'#6b7280'};font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">${m==='未設定'?'日付なし':m} ${cnt}</button>`;
+  }).join('');
+
+  const statCardsHtml=allVidItems.filter(x=>(x.date.slice(0,7)||'未設定')===statCurMonth).map(makeStatCard).join('');
+
+  const videoTableHtml=(allVidItems.length)?`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="sec" style="margin:0;">動画一覧 &amp; インサイト</div>
+      </div>
+      <div id="stat-month-tabs" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;">${statMonthTabsHtml}</div>
+      <div id="stat-cards-grid" data-all='${JSON.stringify(statMonths)}' style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">${statCardsHtml}</div>
+    </div>`:'<div class="card"><div style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0;">「＋ 投稿を追加」から投稿を登録するか、案件作成時にアカウントを選択すると表示されます</div></div>';
+
+    // 動画比較グラフ（再生数バー）
   const compareChartHtml = (linkedProjects.length||accPosts.length) ? (()=>{
     const getBest=(id)=>{
       const sid=String(id);
@@ -2995,19 +3035,7 @@ function renderAccountStats(name){
     </div>`;
   })() : '';
 
-  const videoTableHtml=(linkedProjects.length||accPosts.length)?`
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:16px 20px 0;"><div class="sec">動画一覧 &amp; インサイト</div></div>
-      <table>
-        <thead><tr>
-          <th>投稿日</th><th>動画タイトル</th>
-          <th><span class="badge badge-pink" style="font-size:10px;">48h</span></th>
-          <th><span class="badge badge-purple" style="font-size:10px;">1週間</span></th>
-          <th><span class="badge badge-blue" style="font-size:10px;">1ヶ月</span></th>
-        </tr></thead>
-        <tbody>${videoRows}</tbody>
-      </table>
-    </div>`:'<div class="card"><div style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0;">「＋ 投稿を追加」から投稿を登録するか、案件作成時にアカウントを選択すると表示されます</div></div>';
+
 
   // アカウントデータテーブル
   const sortedRecs=[...recs].reverse();
@@ -3300,6 +3328,81 @@ function toggleOrderPaid(id){
   renderEditorOrders(); toast(o.status==='paid'?'支払済みにしました':'未払いに戻しました');
 }
 // ── プロモート記録 ──
+function switchStatMonth(btn, selectedYm){
+  const tabsWrap=document.getElementById('stat-month-tabs');
+  const grid=document.getElementById('stat-cards-grid');
+  if(!tabsWrap||!grid)return;
+  tabsWrap.querySelectorAll('.stat-month-btn').forEach(b=>{
+    const isActive=b===btn;
+    b.style.background=isActive?'#6d28d9':'#fff';
+    b.style.color=isActive?'#fff':'#6b7280';
+    b.style.borderColor=isActive?'#6d28d9':'#e5e7eb';
+  });
+  // renderAccountStats の allVidItems はスコープ外なので、DOMから再構築
+  // 代わりに renderAccDetail('stats') を再呼び出しせず、
+  // statsBody 内の既存カードを月フィルタで表示/非表示
+  // → 実装: grid内の全カードを再描画するため renderAccDetail を呼ぶ
+  // ただしそれだとタブがリセットされるので、データをgridのdatasetに持たせる
+  const statsBody=document.getElementById('acc-stats-body');
+  if(!statsBody)return;
+  // 全動画データを再取得してフィルタ描画
+  const name=accountMeta[currentAccKey]?.name||currentAccKey.split('__')[0];
+  const accKey=currentAccKey;
+  const lp=projects.filter(p=>p.accountName===name||p.client===name);
+  const ap=posts.filter(p=>p.accountKey===accKey);
+  const items=[
+    ...lp.map(p=>({_id:String(p.id),title:p.title,date:p.postDate||p.ym||'',badge:'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:4px;font-weight:600;">案件</span>',btnHtml:`<button class="btn-sm" onclick="openPostInsight('${p.id}','${p.title.replace(/'/g,"\\'")}','${p.type||''}')">📊 入力</button>`})),
+    ...ap.map(p=>({_id:'post_'+p.id,title:p.title,date:p.postDate||'',badge:({'organic':'<span style="font-size:10px;background:#dcfce7;color:#059669;padding:2px 7px;border-radius:4px;font-weight:600;">🌱</span>','ad':'<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:4px;font-weight:600;">📣</span>','organic_ad':'<span style="font-size:10px;background:#fef3c7;color:#d97706;padding:2px 7px;border-radius:4px;font-weight:600;">🌱📣</span>'})[p.postType||'organic'],btnHtml:`<button class="btn-sm" onclick="openPostInsight('post_${p.id}','${p.title.replace(/'/g,"\\'")}','${p.postType||'organic'}')">📊 入力</button>`}))
+  ].filter(x=>(x.date.slice(0,7)||'未設定')===selectedYm);
+  const makeCard2=(item)=>{
+    const r=(()=>{const sid=String(item._id);const snaps=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();if(snaps.length)return insightRecords[snaps[snaps.length-1]];for(const p of['1week','1month','48h']){if(insightRecords[sid+'_'+p])return insightRecords[sid+'_'+p];}return null;})();
+    const er=r&&r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):null;
+    const ib=r?`<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:16px;font-weight:800;">${fmt(r.views||0)}</span><span style="font-size:11px;color:#6d28d9;font-weight:700;">${er}%ER</span></div></div>`:'<div style="margin-top:8px;padding:5px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
+    return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${item.date.slice(5)||'—'}</span>${item.badge}</div><div style="font-weight:700;font-size:12px;line-height:1.4;margin-bottom:2px;">${item.title}</div>${ib}<div style="margin-top:8px;">${item.btnHtml}</div></div>`;
+  };
+  grid.innerHTML=items.map(makeCard2).join('');
+}
+
+function switchPostsMonth(accKey, selectedYm){
+  const safeKey=accKey.replace(/[^a-z0-9]/gi,'_');
+  const tabsWrap=document.getElementById('posts-month-tabs-'+safeKey);
+  const cardsWrap=document.getElementById('posts-cards-'+safeKey);
+  if(!tabsWrap||!cardsWrap)return;
+
+  // タブのスタイル更新
+  tabsWrap.querySelectorAll('button').forEach(btn=>{
+    const isActive=btn.id===`ptab-${safeKey}-${selectedYm}`;
+    btn.style.background=isActive?'#6d28d9':'#fff';
+    btn.style.color=isActive?'#fff':'#6b7280';
+    btn.style.borderColor=isActive?'#6d28d9':'#e5e7eb';
+  });
+
+  // 該当月のカードを再生成
+  const m=accountMeta[accKey]||{};
+  const accPosts2=posts.filter(p=>p.accountKey===accKey).sort((a,b)=>(b.postDate||'').localeCompare(a.postDate||''));
+  const linkedProj2=projects.filter(p=>p.accountName===m.name||p.client===m.client).sort((a,b)=>(b.postDate||b.ym||'').localeCompare(a.postDate||a.ym||''));
+  const allItems2=[
+    ...accPosts2.map(p=>({...p,_id:'post_'+p.id,_isPost:true,_sortDate:p.postDate||''})),
+    ...linkedProj2.map(p=>({...p,_id:String(p.id),_isPost:false,_sortDate:p.postDate||p.ym||''}))
+  ].filter(item=>((item._sortDate||'').slice(0,7)||'未設定')===selectedYm);
+
+  const ptBadge2={organic:'<span style="font-size:10px;background:#dcfce7;color:#059669;padding:2px 7px;border-radius:4px;font-weight:600;">🌱 オーガニック</span>',ad:'<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:4px;font-weight:600;">📣 広告</span>',organic_ad:'<span style="font-size:10px;background:#fef3c7;color:#d97706;padding:2px 7px;border-radius:4px;font-weight:600;">🌱📣 広告あり</span>'};
+
+  cardsWrap.innerHTML=allItems2.map(item=>{
+    const isPost=item._isPost;
+    const sid=String(item._id);
+    const snapKeys4=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
+    let r=null;
+    if(snapKeys4.length) r=insightRecords[snapKeys4[snapKeys4.length-1]];
+    if(!r){for(const p of ['1week','1month','48h']){if(insightRecords[sid+'_'+p]){r=insightRecords[sid+'_'+p];break;}}}
+    const er=r&&r.views?((r.likes+r.comments+r.shares)/r.views*100).toFixed(1):null;
+    const dateStr=(item._sortDate||'').slice(5)||'—';
+    const badge=isPost?ptBadge2[item.postType||'organic']||ptBadge2.organic:'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:4px;font-weight:600;">案件</span>';
+    const insightBlock=r?`<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:18px;font-weight:800;color:#111827;">${fmt(r.views||0)}</span><span style="font-size:11px;color:#6d28d9;font-weight:700;">${er}%ER</span></div><div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">${r.saves?`<span style="font-size:10px;color:#0891b2;">保存${fmt(r.saves)}</span>`:''}${r.watchTime?`<span style="font-size:10px;color:#6b7280;">⏱${r.watchTime}s</span>`:''}${r.dropoutTime?`<span style="font-size:10px;color:#ef4444;">離脱${r.dropoutTime}s</span>`:''}${r.fullViewRate?`<span style="font-size:10px;color:#059669;">フル${r.fullViewRate}%</span>`:''}</div></div>`:'<div style="margin-top:8px;padding:6px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
+    return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 12px rgba(109,40,217,0.10)'" onmouseout="this.style.boxShadow=''"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${dateStr}</span>${badge}</div><div style="font-weight:700;font-size:13px;line-height:1.4;margin-bottom:2px;">${item.title||'—'}</div>${insightBlock}<div style="display:flex;gap:4px;margin-top:8px;"><button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\\'")}','${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>${isPost?`<button class="btn-sm danger" onclick="deletePost('${item.id||item._id}','${accKey}')">削除</button>`:''}</div></div>`;
+  }).join('');
+}
+
 function showAddPromoteModal(accountName){
   document.getElementById('promo-account-name').value=accountName;
   document.getElementById('promo-edit-id').value='';

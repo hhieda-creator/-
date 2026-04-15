@@ -2589,7 +2589,10 @@ function saveNewPost(){
 }
 
 function editPost(postId, accKey){
-  const p=posts.find(x=>String(x.id)===String(postId));if(!p)return;
+  // IDは数値/文字列が混在するので両方試す
+  const pid=String(postId).replace('post_','');
+  const p=posts.find(x=>String(x.id)===pid);
+  if(!p){console.warn('editPost: not found',postId,pid);toast('投稿が見つかりませんでした');return;}
   const newDate=prompt(`投稿日（現在: ${p.postDate||'未設定'}）
 YYYY-MM-DD形式で入力:`,p.postDate||new Date().toISOString().slice(0,10));
   if(newDate===null)return;
@@ -2599,7 +2602,14 @@ YYYY-MM-DD形式で入力:`,p.postDate||new Date().toISOString().slice(0,10));
   p.title=newTitle.trim()||p.title;
   localStorage.setItem('vop_posts',JSON.stringify(posts));
   gasSave();
+  // 月タブを維持して再描画
+  const activeTab=document.querySelector('#posts-month-tabs-'+accKey.replace(/[^a-z0-9]/gi,'_')+' button[style*="background:#6d28d9"]');
+  const activeYm=activeTab?activeTab.textContent.trim().split(' ')[0]:null;
   renderAccDetail(accKey,'posts');
+  if(activeYm) setTimeout(()=>{
+    const btn=document.querySelector('#posts-month-tabs-'+accKey.replace(/[^a-z0-9]/gi,'_')+' button');
+    if(btn) switchPostsMonth(accKey,activeYm);
+  },50);
   toast('更新しました ✓');
 }
 function deletePost(postId, accKey){
@@ -3447,7 +3457,8 @@ function switchPostsMonth(accKey, selectedYm){
     const dateStr=(item._sortDate||'').slice(5)||'—';
     const badge=isPost?ptBadge2[item.postType||'organic']||ptBadge2.organic:'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:4px;font-weight:600;">案件</span>';
     const insightBlock=r?`<div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:8px;"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:18px;font-weight:800;color:#111827;">${fmt(r.views||0)}</span><span style="font-size:11px;color:#6d28d9;font-weight:700;">${er}%ER</span></div><div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">${r.saves?`<span style="font-size:10px;color:#0891b2;">保存${fmt(r.saves)}</span>`:''}${r.watchTime?`<span style="font-size:10px;color:#6b7280;">⏱${r.watchTime}s</span>`:''}${r.dropoutTime?`<span style="font-size:10px;color:#ef4444;">離脱${r.dropoutTime}s</span>`:''}${r.fullViewRate?`<span style="font-size:10px;color:#059669;">フル${r.fullViewRate}%</span>`:''}</div></div>`:'<div style="margin-top:8px;padding:6px 8px;background:#f9fafb;border-radius:6px;font-size:11px;color:#d1d5db;text-align:center;">未入力</div>';
-    return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 12px rgba(109,40,217,0.10)'" onmouseout="this.style.boxShadow=''"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${dateStr}</span>${badge}</div><div style="font-weight:700;font-size:13px;line-height:1.4;margin-bottom:2px;">${item.title||'—'}</div>${insightBlock}<div style="display:flex;gap:4px;margin-top:8px;"><button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\\'")}','${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>${isPost?`<button class="btn-sm" onclick="editPost('${item.id||item._id.replace('post_','')}','${accKey}')">✏️</button><button class="btn-sm danger" onclick="deletePost('${item.id||item._id}','${accKey}')">削除</button>`:''}</div></div>`;
+    return `<div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 2px 12px rgba(109,40,217,0.10)'" onmouseout="this.style.boxShadow=''"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><span style="font-size:11px;color:#9ca3af;">${dateStr}</span>${badge}</div><div style="font-weight:700;font-size:13px;line-height:1.4;margin-bottom:2px;">${item.title||'—'}</div>${insightBlock}<div style="display:flex;gap:4px;margin-top:8px;"><button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\\'")}','${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>${isPost?('<button class="btn-sm" onclick="editPost(\'' + (item.id||item._id.replace('post_','')) + '\',\'' + accKey + '\')">✏️ 編集</button><button class="btn-sm danger" onclick="deletePost(\'' + (item.id||item._id) + '\',\'' + accKey + '\')">削除</button>'):''}
+    </div></div>`;
   }).join('');
 }
 

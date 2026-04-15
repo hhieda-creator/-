@@ -1613,7 +1613,7 @@ function loadProject(id){
 }
 function copyProjectText(id){const p=projects.find(x=>x.id===id);if(!p)return;navigator.clipboard.writeText(p.preview||'').then(()=>toast('指示書をコピーしました'));}
 function changePostDate(id){
-  const p=projects.find(x=>x.id===id);if(!p)return;
+  const p=projects.find(x=>String(x.id)===String(id));if(!p)return;
   const cur=p.postDate||'';
   const newDate=prompt('投稿日を入力（YYYY-MM-DD）:',cur);
   if(newDate===null)return;
@@ -1621,10 +1621,11 @@ function changePostDate(id){
   localStorage.setItem('vop_projects',JSON.stringify(projects));
   gasSave();
   renderFiling();
-  toast('投稿日を更新しました');
+  if(currentAccKey) renderAccDetail(currentAccKey, currentAccTab||'posts');
+  toast('投稿日を更新しました ✓');
 }
 function renameProject(id){
-  const p=projects.find(x=>x.id===id);if(!p)return;
+  const p=projects.find(x=>String(x.id)===String(id));if(!p)return;
   const newTitle=prompt('案件名を変更:',p.title);
   if(!newTitle||newTitle===p.title)return;
   p.title=newTitle.trim();

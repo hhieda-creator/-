@@ -603,18 +603,7 @@ tr:hover td { background: #fafbff; }
       <div class="ttab" onclick="switchPeriod(this,'1month')">📆 1ヶ月後</div>
     </div>
     <div id="period-label" style="font-size:12px;color:#6b7280;margin-bottom:14px;font-weight:600;"></div>
-    <!-- スクショ読み取りエリア -->
-    <div id="insight-ss-drop" style="border:2px dashed #d1d5db;border-radius:12px;padding:18px 20px;text-align:center;margin-bottom:16px;cursor:pointer;background:#fafbfc;transition:border-color .2s;"
-      onclick="document.getElementById('insight-ss-input').click()"
-      ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
-      ondragleave="this.style.borderColor='#d1d5db'"
-      ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleInsightScreenshot(event.dataTransfer.files[0])">
-      <div style="font-size:22px;margin-bottom:4px;">📸</div>
-      <div style="font-size:13px;font-weight:600;color:#374151;">インサイトのスクショをここにドロップ or クリック</div>
-      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">AIが数値を自動読み取りします</div>
-      <input type="file" id="insight-ss-input" accept="image/*" style="display:none" onchange="handleInsightScreenshot(this.files[0])">
-    </div>
-    <div id="insight-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:18px;"></div>
+
     <div class="form-grid col3">
       <div class="field"><label>再生数</label><input id="m-views" type="number" placeholder="0" oninput="renderInsights()"></div>
       <div class="field"><label>いいね数</label><input id="m-likes" type="number" placeholder="0" oninput="renderInsights()"></div>
@@ -856,6 +845,56 @@ tr:hover td { background: #fafbff; }
   </div>
 </div>
 
+<!-- プロモート追加モーダル -->
+<div id="modal-promote" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1200;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:500px;max-width:90vw;max-height:90vh;overflow-y:auto;">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;">📣 プロモート記録を追加</h3>
+    <input type="hidden" id="promo-account-name">
+    <input type="hidden" id="promo-edit-id">
+    <div class="form-grid" style="gap:10px;">
+      <div class="field"><label>関連動画タイトル</label><input id="promo-post-title" type="text" placeholder="例: 2604コメント返信A"></div>
+      <div class="field"><label>プロモート種別</label>
+        <select id="promo-type" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;">
+          <option value="spark_ads">Spark Ads（TikTok）</option>
+          <option value="topfeed">TopFeed広告</option>
+          <option value="meta_boost">Meta ブースト</option>
+          <option value="instagram_promote">Instagram 広告</option>
+          <option value="other">その他</option>
+        </select>
+      </div>
+      <div class="field"><label>開始日</label><input id="promo-start" type="date"></div>
+      <div class="field"><label>終了日（任意）</label><input id="promo-end" type="date"></div>
+      <div class="field" style="grid-column:1/-1;">
+        <label>予算（円）<span style="font-size:11px;color:#9ca3af;">※あとから追加可能</span></label>
+        <input id="promo-amount" type="number" placeholder="例: 5000">
+      </div>
+      <div class="field" style="grid-column:1/-1;"><label>メモ</label><input id="promo-memo" type="text" placeholder="例: コメント誘導用、3日間運用"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-promote').style.display='none'">キャンセル</button>
+      <button class="btn btn-primary" onclick="savePromote()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 予算追加モーダル -->
+<div id="modal-promote-budget" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1200;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:380px;max-width:90vw;">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">＋ 予算を追加</h3>
+    <div id="promo-budget-title" style="font-size:12px;color:#9ca3af;margin-bottom:16px;"></div>
+    <input type="hidden" id="promo-budget-id">
+    <div class="form-grid" style="gap:10px;">
+      <div class="field"><label>追加日</label><input id="promo-budget-date" type="date"></div>
+      <div class="field"><label>追加予算（円）</label><input id="promo-budget-amount" type="number" placeholder="例: 3000"></div>
+      <div class="field" style="grid-column:1/-1;"><label>メモ</label><input id="promo-budget-memo" type="text" placeholder="例: 効果良いので増額"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-promote-budget').style.display='none'">キャンセル</button>
+      <button class="btn btn-primary" onclick="savePromoteBudget()">追加</button>
+    </div>
+  </div>
+</div>
+
 <!-- 金額編集モーダル -->
 <div id="modal-edit-amount" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1100;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:16px;padding:28px;width:440px;max-width:90vw;">
@@ -938,6 +977,7 @@ let accounts       = JSON.parse(localStorage.getItem('vop_accounts')        || '
 let insightRecords = JSON.parse(localStorage.getItem('vop_insight_records') || '{}');
 let accountMeta    = JSON.parse(localStorage.getItem('vop_account_meta')        || '{}');
 let posts          = JSON.parse(localStorage.getItem('vop_posts')               || '[]');
+let promoteRecords = JSON.parse(localStorage.getItem('vop_promote_records')     || '[]');
 let isSyncing      = false;
 
 // ── GAS DB SYNC ──
@@ -969,7 +1009,7 @@ async function gasSave() {
   if (!GAS_URL || isSyncing) return;
   isSyncing = true;
   try {
-    const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster, accountMeta, posts };
+    const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster, accountMeta, posts, promoteRecords };
     // iframe trick: GASへno-cors GETで送信（CORS完全回避）
     // データをチャンク分割してキーごとに送信
     const keys = Object.keys(data);
@@ -1507,7 +1547,11 @@ function renderFiling(){
   const tbody=document.getElementById('filing-tbody');
   if(!filtered.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="big">📂</div>案件がありません</div></td></tr>';return;}
   tbody.innerHTML=filtered.map(p=>`<tr>
-    <td><span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.ym||'—'}</span></td>
+    <td>
+      <span style="font-family:'Space Mono',monospace;font-size:11px;color:#6b7280;">${p.ym||'—'}</span>
+      ${p.postDate?`<div style="font-size:10px;color:#0891b2;margin-top:2px;">📅 ${p.postDate}</div>`:''}
+      <button onclick="changePostDate(${p.id})" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:10px;padding:1px 3px;" title="投稿日を変更">📅</button>
+    </td>
     <td><span class="badge badge-purple">${p.client||'未設定'}</span></td>
     <td>
       <strong style="font-size:13px;">${p.title}</strong>
@@ -1565,6 +1609,17 @@ function loadProject(id){
   toast('案件を読み込みました');
 }
 function copyProjectText(id){const p=projects.find(x=>x.id===id);if(!p)return;navigator.clipboard.writeText(p.preview||'').then(()=>toast('指示書をコピーしました'));}
+function changePostDate(id){
+  const p=projects.find(x=>x.id===id);if(!p)return;
+  const cur=p.postDate||'';
+  const newDate=prompt('投稿日を入力（YYYY-MM-DD）:',cur);
+  if(newDate===null)return;
+  p.postDate=newDate.trim();
+  localStorage.setItem('vop_projects',JSON.stringify(projects));
+  gasSave();
+  renderFiling();
+  toast('投稿日を更新しました');
+}
 function renameProject(id){
   const p=projects.find(x=>x.id===id);if(!p)return;
   const newTitle=prompt('案件名を変更:',p.title);
@@ -2194,11 +2249,11 @@ function renderAccDetail(key, tab){
     const linkedProj = projects.filter(p=>p.accountName===m.name||p.client===m.client).sort((a,b)=>(b.postDate||b.ym||'').localeCompare(a.postDate||a.ym||''));
 
     // 比較グラフ用データ（独立投稿 + 案件）
-    const allItems=[
+    const chartItems=[
       ...accPosts.map(p=>({id:`post_${p.id}`,title:p.title,postDate:p.postDate,type:'post'})),
       ...linkedProj.map(p=>({id:p.id,title:p.title,postDate:p.postDate||p.ym,type:'project'}))
     ];
-    const videoData=allItems.map(item=>{
+    const videoData=chartItems.map(item=>{
       const r=insightRecords[`${item.id}_1week`]||insightRecords[`${item.id}_48h`]||insightRecords[`${item.id}_1month`];
       return{...item,r};
     }).filter(x=>x.r);
@@ -2275,15 +2330,60 @@ function renderAccDetail(key, tab){
     </tr>`).join('');
 
     const hasAny=accPosts.length||linkedProj.length;
+
+    // 月別グルーピング
+    const allItems=[
+      ...accPosts.map(p=>({...p,_id:'post_'+p.id,_isPost:true,_sortDate:p.postDate||''})),
+      ...linkedProj.map(p=>({...p,_id:String(p.id),_isPost:false,_sortDate:p.postDate||p.ym||''}))
+    ].sort((a,b)=>b._sortDate.localeCompare(a._sortDate));
+
+    const byMonth={};
+    allItems.forEach(item=>{
+      const ym=(item._sortDate||'').slice(0,7)||'日付なし';
+      if(!byMonth[ym])byMonth[ym]=[];
+      byMonth[ym].push(item);
+    });
+
+    const monthGroups=Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0])).map(([ym,items])=>{
+      const rows=items.map(item=>{
+        const isPost=item._isPost;
+        const snapKeys2=Object.keys(insightRecords).filter(k=>k.startsWith(item._id+'_snap_')).sort();
+        const legacyPeriods2=['48h','1week','1month','organic','ad'].filter(p=>insightRecords[item._id+'_'+p]);
+        const hasSnaps=snapKeys2.length>0||legacyPeriods2.length>0;
+        const badgeHtml=isPost
+          ?ptBadge[item.postType||'organic']||ptBadge.organic
+          :'<span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:4px;">案件</span>';
+        const insightHtml=hasSnaps?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${mkCells(item._id,item.postType)
+          .replace(/<td[^>]*>/g,'').replace(/<\/td>/g,'').split('<div').filter(s=>s.trim()).map(s=>'<div'+s).slice(0,3).join('')}</div>`:
+          `<span style="font-size:11px;color:#d1d5db;">未入力</span>`;
+
+        return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f3f4f6;">
+          <div style="min-width:80px;font-size:11px;color:#6b7280;">
+            <div>${(item._sortDate||'—').slice(5)||'—'}</div>
+            <div style="margin-top:3px;">${badgeHtml}</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.title||'—'}</div>
+            <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;">
+              <button class="btn-sm" onclick="openPostInsight('${item._id}','${(item.title||'').replace(/'/g,"\'")}',' ${isPost?item.postType||'organic':item.type||''}')">📊 入力</button>
+              ${isPost?`<button class="btn-sm danger" onclick="deletePost('${item.id}','${key}')">削除</button>`:''}
+            </div>
+            ${hasSnaps?`<div style="margin-top:6px;">${mkCells(item._id,isPost?item.postType:null)}</div>`:''}
+          </div>
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:700;color:#6d28d9;padding:8px 0 4px;border-bottom:2px solid #ede9fe;margin-bottom:4px;">${ym==='日付なし'?'📅 日付未設定':('📅 '+ym)}</div>
+        ${rows}
+      </div>`;
+    }).join('');
+
     body=`
       <div style="margin-bottom:12px;">
         <button class="btn btn-primary" onclick="showAddPostModal('${key}')">＋ 投稿を追加</button>
       </div>
       ${chart}
-      ${hasAny?`<div style="overflow-x:auto;"><table>
-        <thead><tr><th>投稿日</th><th>タイトル</th><th colspan="4" style="text-align:center;color:#6b7280;font-size:11px;">インサイット（スナップショット）</th></tr></thead>
-        <tbody>${postRows}${projRows}</tbody>
-      </table></div>`:`<div class="empty-state"><div class="big">🎬</div>投稿がまだありません<br><span style="font-size:12px;color:#9ca3af;">「＋ 投稿を追加」から登録してください</span></div>`}
+      ${hasAny?monthGroups:`<div class="empty-state"><div class="big">🎬</div>投稿がまだありません<br><span style="font-size:12px;color:#9ca3af;">「＋ 投稿を追加」から登録してください</span></div>`}
     `;
   } else if(tab==='record'){
     const recentRecs=[...recs].reverse().slice(0,10);
@@ -2305,15 +2405,7 @@ function renderAccDetail(key, tab){
         }).join('')}
       </div>`:'';
     body=`${recsListHtml}
-      <div id="acc-ss-status" style="font-size:12px;color:#6b7280;margin-bottom:6px;min-height:16px;"></div>
-      <div id="acc-ss-drop" style="border:2px dashed #d1d5db;border-radius:10px;padding:10px;text-align:center;margin-bottom:10px;cursor:pointer;background:#fafbfc;"
-        onclick="document.getElementById('acc-ss-input').click()"
-        ondragover="event.preventDefault();this.style.borderColor='#6d28d9'"
-        ondragleave="this.style.borderColor='#d1d5db'"
-        ondrop="event.preventDefault();this.style.borderColor='#d1d5db';handleAccScreenshot(event.dataTransfer.files[0])">
-        <div style="font-size:15px;">📸 スクショをAI読み取り</div>
-        <input type="file" id="acc-ss-input" accept="image/*" style="display:none" onchange="handleAccScreenshot(this.files[0])">
-      </div>
+
       <div class="form-grid col3">
         <div class="field"><label>記録日</label><input id="acc-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
         <div class="field"><label>フォロワー数</label><input id="acc-followers" type="number" placeholder="0"></div>
@@ -2918,25 +3010,78 @@ function renderAccountStats(name){
     </div>`:'<div class="card"><div style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0;">「＋ 投稿を追加」から投稿を登録するか、案件作成時にアカウントを選択すると表示されます</div></div>';
 
   // アカウントデータテーブル
-  const accRows=recs.length?[...recs].reverse().slice(0,20).map(r=>`<tr>
-    <td style="font-family:'Space Mono',monospace;font-size:11px;">${r.date}${postDates.has(r.date)?` <span style="color:#e8305a;">🎬</span>`:''}</td>
-    <td><strong>${(r.followers||0).toLocaleString()}</strong></td>
-    <td>${(r.views||0).toLocaleString()}</td>
-    <td>${(r.profile||0).toLocaleString()}</td>
-    <td>${(r.likes||0).toLocaleString()}</td>
-    <td style="color:#6b7280;font-size:12px;">${r.memo||'—'}</td>
-    <td><button class="btn-sm danger" onclick="deleteAccountRecord('${name}','${r.date}')">削除</button></td>
-  </tr>`).join(''):'';
+  const sortedRecs=[...recs].reverse();
+  const accRows=sortedRecs.slice(0,20).map((r,i)=>{
+    const prev=sortedRecs[i+1];
+    const diff=prev!=null?r.followers-prev.followers:null;
+    const diffHtml=diff===null?'':diff===0?'<span style="color:#9ca3af;">±0</span>':diff>0?`<span style="color:#059669;font-weight:700;">▲${fmt(diff)}</span>`:`<span style="color:#ef4444;font-weight:700;">▼${fmt(Math.abs(diff))}</span>`;
+    const hasPost2=postDates.has(r.date);
+    return `<tr style="background:${hasPost2?'#fff9f0':''};">
+      <td style="font-family:monospace;font-size:11px;white-space:nowrap;">${r.date}${hasPost2?' 🎬':''}</td>
+      <td style="font-weight:700;">${fmt(r.followers||0)}</td>
+      <td style="font-size:11px;">${diffHtml}</td>
+      <td style="color:#6b7280;">${fmt(r.views||0)}</td>
+      <td style="color:#6b7280;">${fmt(r.profile||0)}</td>
+      <td style="color:#6b7280;">${fmt(r.likes||0)}</td>
+      <td style="color:#9ca3af;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.memo||''}</td>
+      <td><button class="btn-sm danger" onclick="deleteAccountRecord('${name}','${r.date}')">削除</button></td>
+    </tr>`;
+  }).join('');
 
   const accTableHtml=recs.length?`
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:16px 20px 0;"><div class="sec">アカウントデータ記録</div></div>
-      <table><thead><tr><th>日付</th><th>フォロワー</th><th>再生数</th><th>プロフ訪問</th><th>いいね</th><th>メモ</th><th></th></tr></thead>
-      <tbody>${accRows}</tbody></table>
+      <div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center;">
+        <div class="sec" style="margin:0;">アカウントデータ記録</div>
+      </div>
+      <div style="overflow-x:auto;">
+      <table style="font-size:12px;"><thead><tr style="background:#f9fafb;">
+        <th>日付</th><th>フォロワー</th><th>増減</th><th>再生数</th><th>プロフ訪問</th><th>いいね</th><th>メモ</th><th></th>
+      </tr></thead>
+      <tbody>${accRows}</tbody></table></div>
     </div>`:'';
 
+
+  // プロモート記録（このアカウントに関連するもの）
+  const accPromos=promoteRecords.filter(r=>r.accountName===name).sort((a,b)=>b.startDate.localeCompare(a.startDate));
+  const promoHtml=`<div class="card" style="margin-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="sec" style="margin:0;">📣 プロモート記録</div>
+      <button class="btn btn-secondary" style="font-size:11px;padding:5px 12px;" onclick="showAddPromoteModal('${name}')">＋ 追加</button>
+    </div>
+    ${accPromos.length?accPromos.map(r=>{
+      const total=r.budgets?r.budgets.reduce((s,b)=>s+(b.amount||0),0):r.amount||0;
+      const budgetLine=r.budgets&&r.budgets.length>1?
+        `<div style="font-size:11px;color:#6b7280;margin-top:2px;">内訳: ${r.budgets.map(b=>`${b.date} ¥${fmt(b.amount)}`).join(' / ')}</div>`:
+        '';
+      return `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;gap:12px;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:13px;">${r.postTitle||'—'}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px;">${r.startDate||''}${r.endDate?' 〜 '+r.endDate:''} ／ ${r.promoteType||'—'}</div>
+          ${budgetLine}
+          ${r.memo?`<div style="font-size:11px;color:#9ca3af;margin-top:2px;">${r.memo}</div>`:''}
+        </div>
+        <div style="text-align:right;min-width:80px;">
+          <div style="font-size:18px;font-weight:800;color:#e8305a;">¥${fmt(total)}</div>
+          <button class="btn-sm" onclick="addPromoteBudget(${r.id})" title="予算を追加">＋予算</button>
+          <button class="btn-sm danger" style="margin-top:4px;" onclick="deletePromote(${r.id})">削除</button>
+        </div>
+      </div>`;
+    }).join(''):'<div style="font-size:12px;color:#9ca3af;text-align:center;padding:8px 0;">プロモート記録がありません</div>'}
+  </div>`;
+
+  // AI分析（Claudeによる傾向分析）
+  const aiAnalysisHtml=`<div class="card" id="ai-analysis-${name.replace(/[^a-zA-Z0-9]/g,'_')}" style="background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #c4b5fd;margin-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:700;color:#4c1d95;">🤖 AI傾向分析</div>
+      <button class="btn-sm" onclick="runAIAnalysis('${name}')" style="background:#6d28d9;color:#fff;border:none;">分析する</button>
+    </div>
+    <div id="ai-result-${name.replace(/[^a-zA-Z0-9]/g,'_')}" style="font-size:12px;color:#5b21b6;line-height:1.7;">
+      「分析する」を押すと、フォロワー推移・インサイット・投稿パターンから傾向をAIが分析します
+    </div>
+  </div>`;
+
   const statsBody=document.getElementById('acc-stats-body');
-  const statsContent=`${statsHtml}${chartHtml}${compareChartHtml}${videoTableHtml}${accTableHtml}`;
+  const statsContent=`${aiAnalysisHtml}${promoHtml}${statsHtml}${chartHtml}${compareChartHtml}${videoTableHtml}${accTableHtml}`;
   if(statsBody){
     statsBody.innerHTML=statsContent;
   } else {
@@ -3154,6 +3299,134 @@ function toggleOrderPaid(id){
   localStorage.setItem('vop_editor_orders',JSON.stringify(editorOrders));
   renderEditorOrders(); toast(o.status==='paid'?'支払済みにしました':'未払いに戻しました');
 }
+// ── プロモート記録 ──
+function showAddPromoteModal(accountName){
+  document.getElementById('promo-account-name').value=accountName;
+  document.getElementById('promo-edit-id').value='';
+  document.getElementById('promo-post-title').value='';
+  document.getElementById('promo-type').value='spark_ads';
+  document.getElementById('promo-start').value=new Date().toISOString().slice(0,10);
+  document.getElementById('promo-end').value='';
+  document.getElementById('promo-amount').value='';
+  document.getElementById('promo-memo').value='';
+  document.getElementById('modal-promote').style.display='flex';
+}
+function savePromote(){
+  const name=document.getElementById('promo-account-name').value;
+  const editId=+document.getElementById('promo-edit-id').value||0;
+  const rec={
+    id:editId||Date.now(),
+    accountName:name,
+    postTitle:document.getElementById('promo-post-title').value.trim(),
+    promoteType:document.getElementById('promo-type').value,
+    startDate:document.getElementById('promo-start').value,
+    endDate:document.getElementById('promo-end').value,
+    amount:+document.getElementById('promo-amount').value||0,
+    budgets:[{date:document.getElementById('promo-start').value,amount:+document.getElementById('promo-amount').value||0,memo:'初期予算'}],
+    memo:document.getElementById('promo-memo').value.trim(),
+    createdAt:new Date().toISOString()
+  };
+  if(editId){
+    const idx=promoteRecords.findIndex(r=>r.id===editId);
+    if(idx>=0)promoteRecords[idx]={...promoteRecords[idx],...rec,budgets:promoteRecords[idx].budgets};
+  } else {
+    promoteRecords.push(rec);
+  }
+  localStorage.setItem('vop_promote_records',JSON.stringify(promoteRecords));
+  gasSave();
+  document.getElementById('modal-promote').style.display='none';
+  renderAccDetail(currentAccKey,'stats');
+  toast('プロモートを記録しました');
+}
+function addPromoteBudget(id){
+  const r=promoteRecords.find(x=>x.id===id);if(!r)return;
+  document.getElementById('promo-budget-id').value=id;
+  document.getElementById('promo-budget-title').textContent=r.postTitle||r.accountName;
+  document.getElementById('promo-budget-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('promo-budget-amount').value='';
+  document.getElementById('promo-budget-memo').value='';
+  document.getElementById('modal-promote-budget').style.display='flex';
+}
+function savePromoteBudget(){
+  const id=+document.getElementById('promo-budget-id').value;
+  const r=promoteRecords.find(x=>x.id===id);if(!r)return;
+  const budget={
+    date:document.getElementById('promo-budget-date').value,
+    amount:+document.getElementById('promo-budget-amount').value||0,
+    memo:document.getElementById('promo-budget-memo').value.trim()
+  };
+  if(!r.budgets)r.budgets=[];
+  r.budgets.push(budget);
+  r.amount=(r.budgets.reduce((s,b)=>s+(b.amount||0),0));
+  localStorage.setItem('vop_promote_records',JSON.stringify(promoteRecords));
+  gasSave();
+  document.getElementById('modal-promote-budget').style.display='none';
+  renderAccDetail(currentAccKey,'stats');
+  toast(`¥${fmt(budget.amount)} を追加しました`);
+}
+function deletePromote(id){
+  if(!confirm('このプロモート記録を削除しますか？'))return;
+  promoteRecords=promoteRecords.filter(x=>x.id!==id);
+  localStorage.setItem('vop_promote_records',JSON.stringify(promoteRecords));
+  gasSave();
+  renderAccDetail(currentAccKey,'stats');
+  toast('削除しました');
+}
+
+// ── AI傾向分析 ──
+async function runAIAnalysis(name){
+  const safeId=name.replace(/[^a-zA-Z0-9]/g,'_');
+  const btn=document.querySelector(`#ai-analysis-${safeId} button`);
+  const resultEl=document.getElementById(`ai-result-${safeId}`);
+  if(!resultEl)return;
+  if(btn){btn.disabled=true;btn.textContent='分析中...';}
+  resultEl.textContent='データを分析しています...';
+
+  const key=`${name}__${currentSNSTab}`;
+  const recs=accounts[key]||accounts[name]||[];
+  const linkedProjects=projects.filter(p=>p.accountName===name||p.client===name);
+  const accPosts2=posts.filter(p=>p.accountKey===key||p.accountKey===name);
+  const promos=promoteRecords.filter(r=>r.accountName===name);
+
+  // フォロワー推移サマリ
+  const latestF=recs.length?recs[recs.length-1].followers:0;
+  const oldF=recs.length>7?recs[recs.length-8].followers:recs.length?recs[0].followers:0;
+  const fGrowth=latestF-oldF;
+
+  // インサイットサマリ（直近5件の平均ER）
+  const allItemIds=[...linkedProjects.map(p=>String(p.id)),...accPosts2.map(p=>'post_'+p.id)];
+  const erList=allItemIds.map(id=>{
+    const r=insightRecords[id+'_1week']||insightRecords[id+'_48h']||insightRecords[id+'_1month'];
+    if(!r||!r.views)return null;
+    return ((r.likes+r.comments+r.shares)/r.views*100);
+  }).filter(x=>x!==null);
+  const avgER=erList.length?(erList.reduce((a,b)=>a+b,0)/erList.length).toFixed(2):null;
+
+  const prompt=`あなたはSNSマーケティングの専門家です。以下のTikTokアカウントデータを分析し、日本語で簡潔に傾向と改善アドバイスをください。
+
+【アカウント】${name}
+【直近7日のフォロワー変化】${fGrowth>=0?'+':''}${fmt(fGrowth)}人（現在${fmt(latestF)}人）
+【投稿本数】案件${linkedProjects.length}本 / 独立投稿${accPosts2.length}本
+【平均ER】${avgER?avgER+'%':'データなし'}
+【プロモート実績】${promos.length}件（合計¥${fmt(promos.reduce((s,r)=>s+(r.amount||0),0))}）
+
+3〜5文で：①現在の状態評価、②良い点、③改善すべき点を教えてください。数字を具体的に使ってください。`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await res.json();
+    const text=data.content?.find(c=>c.type==='text')?.text||'分析できませんでした';
+    resultEl.innerHTML=text.replace(/\n/g,'<br>');
+  }catch(e){
+    resultEl.textContent='分析エラーが発生しました: '+e.message;
+  }
+  if(btn){btn.disabled=false;btn.textContent='再分析';}
+}
+
 function deleteOrder(id){
   if(!confirm('この発注記録を削除しますか？'))return;
   editorOrders=editorOrders.filter(x=>x.id!==id);

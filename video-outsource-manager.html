@@ -995,16 +995,37 @@ async function gasLoad() {
     const data = JSON.parse(text);
     if (!data.success || !data.data) return;
     const d = data.data;
-    // GASのデータがローカルより多い場合のみ上書き（ローカルを守る）
-    if (d.projects     && d.projects.length > projects.length)       { projects       = d.projects;       localStorage.setItem('vop_projects',        JSON.stringify(projects)); }
-    if (d.clients      && d.clients.length > clients.length)         { clients        = d.clients;        localStorage.setItem('vop_clients',         JSON.stringify(clients)); }
-    if (d.accounts     && Object.keys(d.accounts).length > Object.keys(accounts).length) { accounts = d.accounts; localStorage.setItem('vop_accounts', JSON.stringify(accounts)); }
-    if (d.insightRecords && Object.keys(d.insightRecords).length > Object.keys(insightRecords).length) { insightRecords = d.insightRecords; localStorage.setItem('vop_insight_records', JSON.stringify(insightRecords)); }
-    if (d.editors      && d.editors.length > editors.length)         { editors        = d.editors;        localStorage.setItem('vop_editors',         JSON.stringify(editors)); }
-    if (d.editorOrders && d.editorOrders.length > editorOrders.length){ editorOrders  = d.editorOrders;   localStorage.setItem('vop_editor_orders',   JSON.stringify(editorOrders)); }
-    if (d.casts        && d.casts.length > castMaster.length)        { castMaster     = d.casts;          localStorage.setItem('vop_casts',           JSON.stringify(castMaster)); }
-    if (d.posts        && d.posts.length > posts.length)               { posts          = d.posts;          localStorage.setItem('vop_posts',           JSON.stringify(posts)); }
+    // 件数ではなくsavedAtで新しい方を採用
+    const gasTime = d.savedAt ? new Date(d.savedAt).getTime() : 0;
+    const localTime = localStorage.getItem('vop_saved_at') ? new Date(localStorage.getItem('vop_saved_at')).getTime() : 0;
+    const useGas = gasTime > localTime;
+    // 配列データ：件数多い方を優先（削除操作を保護しない代わりに欠落を防ぐ）
+    const mergeArr = (gas, local, key) => {
+      if(!gas) return;
+      const merged = gas.length >= local.length ? gas : local;
+      eval(key + ' = merged');
+      localStorage.setItem('vop_' + key.replace(/([A-Z])/g,'_$1').toLowerCase(), JSON.stringify(merged));
+    };
+    const mergeObj = (gas, local, key, storageKey) => {
+      if(!gas) return;
+      const gCount = Object.keys(gas).length;
+      const lCount = Object.keys(local).length;
+      const merged = gCount >= lCount ? gas : local;
+      eval(key + ' = merged');
+      localStorage.setItem(storageKey, JSON.stringify(merged));
+    };
+    mergeArr(d.projects,    projects,    'projects');
+    mergeArr(d.clients,     clients,     'clients');
+    mergeArr(d.editors,     editors,     'editors');
+    mergeArr(d.editorOrders, editorOrders, 'editorOrders');
+    mergeArr(d.posts,       posts,        'posts');
+    if(d.casts) { castMaster = d.casts.length >= castMaster.length ? d.casts : castMaster; localStorage.setItem('vop_casts', JSON.stringify(castMaster)); }
+    mergeObj(d.accounts,      accounts,      'accounts',      'vop_accounts');
+    mergeObj(d.insightRecords, insightRecords, 'insightRecords', 'vop_insight_records');
+    mergeObj(d.accountMeta,   accountMeta,   'accountMeta',   'vop_account_meta');
+    if(d.promoteRecords) { promoteRecords = d.promoteRecords.length >= promoteRecords.length ? d.promoteRecords : promoteRecords; localStorage.setItem('vop_promote_records', JSON.stringify(promoteRecords)); }
     refreshAllViews();
+    checkInsightReminders();
     toast('☁️ データを同期しました');
   } catch(e) {
     console.warn('GAS load failed:', e);
@@ -1015,17 +1036,19 @@ async function gasSave() {
   if (!GAS_URL || isSyncing) return;
   isSyncing = true;
   try {
-    const data = { projects, clients, accounts, insightRecords, editors, editorOrders, casts: castMaster, accountMeta, posts, promoteRecords };
-    // iframe trick: GASへno-cors GETで送信（CORS完全回避）
-    // データをチャンク分割してキーごとに送信
-    const keys = Object.keys(data);
-    for (const key of keys) {
-      const chunk = encodeURIComponent(JSON.stringify(data[key]));
-      const url = GAS_URL + '?action=saveKey&key=' + key + '&val=' + chunk;
-      if (url.length < 7000) {
-        await fetch(url, { method:'GET', mode:'no-cors' });
-      }
-    }
+    const data = {
+      projects, clients, accounts, insightRecords,
+      editors, editorOrders, casts: castMaster,
+      accountMeta, posts, promoteRecords,
+      savedAt: new Date().toISOString()
+    };
+    // POST でJSON送信（データ量制限なし）
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'saveAll', data })
+    });
   } catch(e) {
     console.warn('GAS save failed:', e);
   } finally {
@@ -3544,18 +3567,25 @@ function checkInsightReminders(){
 }
 
 function buildInsightGrid(sid){
-  const snap=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
-  const cols=[
-    {label:'48h',r:insightRecords[sid+'_48h']||null,isAd:false},
-    {label:'1週',r:insightRecords[sid+'_1week']||null,isAd:false},
-    {label:'1ヶ月',r:insightRecords[sid+'_1month']||null,isAd:false}
-  ];
-  if(snap.length){
-    snap.slice(-3).forEach((k,i)=>{
+  const lmap={'48h':'48h','1week':'1週','1month':'1ヶ月','ad_start':'広告前','ad_3day':'広告3日','ad_end':'広告後'};
+  const snapKeys=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
+
+  let cols;
+  if(snapKeys.length){
+    // 新形式スナップ：最新3件をそのままラベル付きで表示
+    cols=snapKeys.slice(-3).map(k=>{
       const d=insightRecords[k];
-      const lmap={'48h':'48h','1week':'1週','1month':'1ヶ月','ad_start':'広告前','ad_3day':'広告3日','ad_end':'広告後'};
-      cols[i]={label:(d.label?lmap[d.label]||d.label:(d.date||'').slice(5)||'記録'),r:d,isAd:d.isAd};
+      return {label:d.label?lmap[d.label]||d.label:(d.date||'').slice(5)||'記録', r:d, isAd:!!d.isAd};
     });
+    // 3件未満なら空欄で埋める
+    while(cols.length<3) cols.push({label:'—',r:null,isAd:false});
+  } else {
+    // 旧形式：48h/1week/1month の3列固定
+    cols=[
+      {label:'48h',  r:insightRecords[sid+'_48h']  ||null, isAd:false},
+      {label:'1週',  r:insightRecords[sid+'_1week'] ||null, isAd:false},
+      {label:'1ヶ月',r:insightRecords[sid+'_1month']||null, isAd:false}
+    ];
   }
   let html='<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">';
   cols.forEach(c=>{

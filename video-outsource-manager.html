@@ -3568,25 +3568,25 @@ function checkInsightReminders(){
 
 function buildInsightGrid(sid){
   const lmap={'48h':'48h','1week':'1週','1month':'1ヶ月','ad_start':'広告前','ad_3day':'広告3日','ad_end':'広告後'};
+
+  // 常に48h/1週/1ヶ月の3列固定で表示
+  // 旧形式キーを優先、なければ新形式スナップから該当ラベルを探す
   const snapKeys=Object.keys(insightRecords).filter(k=>k.startsWith(sid+'_snap_')).sort();
 
-  let cols;
-  if(snapKeys.length){
-    // 新形式スナップ：最新3件をそのままラベル付きで表示
-    cols=snapKeys.slice(-3).map(k=>{
+  const findSnapByLabel=(targetLabels)=>{
+    // 新形式スナップの中でラベルが一致するものを返す
+    for(const k of snapKeys.slice().reverse()){
       const d=insightRecords[k];
-      return {label:d.label?lmap[d.label]||d.label:(d.date||'').slice(5)||'記録', r:d, isAd:!!d.isAd};
-    });
-    // 3件未満なら空欄で埋める
-    while(cols.length<3) cols.push({label:'—',r:null,isAd:false});
-  } else {
-    // 旧形式：48h/1week/1month の3列固定
-    cols=[
-      {label:'48h',  r:insightRecords[sid+'_48h']  ||null, isAd:false},
-      {label:'1週',  r:insightRecords[sid+'_1week'] ||null, isAd:false},
-      {label:'1ヶ月',r:insightRecords[sid+'_1month']||null, isAd:false}
-    ];
-  }
+      if(d&&d.label&&targetLabels.includes(d.label)) return d;
+    }
+    return null;
+  };
+
+  const cols=[
+    {label:'48h',   r: insightRecords[sid+'_48h']   || findSnapByLabel(['48h']),            isAd:false},
+    {label:'1週',   r: insightRecords[sid+'_1week']  || findSnapByLabel(['1week']),           isAd:false},
+    {label:'1ヶ月', r: insightRecords[sid+'_1month'] || findSnapByLabel(['1month']),          isAd:false}
+  ];
   let html='<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">';
   cols.forEach(c=>{
     const rv=c.r;
